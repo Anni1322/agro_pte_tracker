@@ -97,10 +97,21 @@ def track_dashboard(request):
 
 
 # 2. List View (All Tasks)
-def todo_list(request):
-    todos = Todo.objects.all().order_by('-created_at')
-    return render(request, 'todo/todo_list.html', {'todos': todos})
+# def todo_list(request):
+#     # todos = Todo.objects.all().order_by('-created_at')
+#     todos = Todo.objects.all().order_by(user=request.user)
+#     # todos = Todo.objects.filter(user=request.user)
+#     return render(request, 'todo/todo_list.html', {'todos': todos})
 
+# @login_required
+def todo_list(request):
+    # 1. Logic: If Admin (Anil), show all. If User (Rohit), show only assigned.
+    if request.user.is_staff:
+        todos = Todo.objects.all().order_by('-created_at')
+    else:
+        todos = Todo.objects.filter(assigned_to=request.user).order_by('-created_at')
+    
+    return render(request, 'todo/todo_list.html', {'todos': todos})
 # 3. Create View
 # def todo_create(request):
 #     if request.method == "POST":

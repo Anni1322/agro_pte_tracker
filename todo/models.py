@@ -39,6 +39,7 @@ class Todo(models.Model):
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='daily')
     
     # NEW FIELDS
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="Todo", null=True, blank=True)
     assigned_to = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_tasks')
     
