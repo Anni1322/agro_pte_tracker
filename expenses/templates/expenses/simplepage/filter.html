@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agroexpence Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --sidebar-bg: #111827;
+            --main-bg: #f9fafb;
+            --accent: #4f46e5;
+            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--main-bg); margin: 0; display: flex; }
+
+        /* Sidebar */
+        .sidebar { width: 260px; height: 100vh; background: var(--sidebar-bg); position: fixed; left: 0; top: 0; padding: 24px; color: #9ca3af; z-index: 1000; transition: 0.3s; }
+        .sidebar-brand { color: white; font-weight: 700; font-size: 1.25rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 10px; }
+        .sidebar-heading { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #4b5563; margin: 1.5rem 0 0.5rem; font-weight: 700; }
+        .nav-link { color: #9ca3af; padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 12px; text-decoration: none; transition: 0.2s; margin-bottom: 4px; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: white; }
+        .sub-nav { padding-left: 32px; font-size: 0.9rem; }
+
+        /* Main Content */
+        .main-content { margin-left: 260px; width: calc(100% - 260px); min-height: 100vh; }
+        
+        /* Header */
+        header { background: white; padding: 15px 30px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 900; }
+
+        /* Cards & UI Elements */
+        .content-padding { padding: 30px; }
+        .filter-card { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--card-shadow); margin-bottom: 25px; }
+        .stats-card { background: white; padding: 25px; border-radius: 12px; box-shadow: var(--card-shadow); height: 100%; }
+        .total-amount { font-size: 2rem; font-weight: 700; color: var(--accent); }
+        
+        .table-card { background: white; border-radius: 12px; box-shadow: var(--card-shadow); overflow: hidden; margin-top: 25px; }
+        .table thead { background: #f3f4f6; }
+        .badge-cat { background: #e0e7ff; color: #4338ca; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+
+        @media (max-width: 768px) {
+            .sidebar { left: -260px; }
+            .main-content { margin-left: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-wallet text-primary"></i> Agroexpence
+        </div>
+        
+        <small class="sidebar-heading">Main</small>
+        <a href="{% url 'dashboard_view' %}" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a>
+        
+        <small class="sidebar-heading">Finance</small>
+        <a href="{% url 'form_view' %}" class="nav-link active"><i class="fas fa-arrow-trend-down"></i> Expenses</a>
+        <div class="sub-nav">
+            <a href="{% url 'addexpence_view' %}" class="nav-link"><i class="fas fa-plus"></i> Add New</a>
+            <a href="{% url 'chart_view' %}" class="nav-link"><i class="fas fa-chart-pie"></i> Analytics</a>
+            <a href="{% url 'upload-form' %}" class="nav-link"><i class="fas fa-camera"></i> Scan Receipt</a>
+        </div>
+
+        <small class="sidebar-heading">Management</small>
+        <a href="/employee/" class="nav-link"><i class="fas fa-users"></i> Employees</a>
+        <a href="/project/" class="nav-link"><i class="fas fa-tasks"></i> Projects</a>
+        
+        <div style="position: absolute; bottom: 20px; width: 210px;">
+            <a href="{% url 'logout' %}" class="nav-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header>
+            <h4 class="m-0 fw-bold text-dark">Expense Management</h4>
+            <div class="user-profile d-flex align-items-center">
+                <span class="me-3 text-muted">Welcome, Admin</span>
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">A</div>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="filter-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted">Month</label>
+                        <select id="monthSelect" class="form-select border-0 bg-light">
+                            <option value="">Full Year</option>
+                            <option value="2025-01">January</option>
+                            <option value="2025-02">February</option>
+                            <option value="2025-03">March</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted">Category</label>
+                        <select id="categorySelect" class="form-select border-0 bg-light">
+                            <option value="">All Categories</option>
+                            <option value="rent">Rent</option>
+                            <option value="food">Food</option>
+                            <option value="transport">Transport</option>
+                            <option value="shopping">Shopping</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100 shadow-sm" onclick="updateFilters()">
+                            <i class="fas fa-filter me-2"></i> Apply Filter
+                        </button>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <small class="text-muted d-block mb-1">Total Found</small>
+                        <div class="total-amount" id="totalExpense">₹ 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="stats-card">
+                        <h6 class="fw-bold mb-4">Spending Analysis</h6>
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="stats-card">
+                        <h6 class="fw-bold mb-4">Recent Transactions</h6>
+                        <div id="expenseList" class="overflow-auto" style="max-height: 350px;">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <table class="table m-0">
+                    <thead>
+                        <tr>
+                            <th class="border-0 px-4 py-3">Date</th>
+                            <th class="border-0 py-3">Category</th>
+                            <th class="border-0 py-3">Description</th>
+                            <th class="border-0 px-4 py-3 text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let expenses = [];
+        let chart;
+
+        async function fetchExpenses() {
+            try {
+                const response = await fetch("http://127.0.0.1:8000/expenses/getexpenses/");
+                const data = await response.json();
+                expenses = data.expenses.map(exp => ({
+                    ...exp,
+                    amount: parseFloat(exp.amount)
+                }));
+                updateDashboard(expenses);
+            } catch (error) {
+                console.error("API Error:", error);
+                // Demo Data if API fails
+                expenses = [{date: '2025-01-15', category: 'food', amount: 1200, description: 'Lunch'}, {date: '2025-01-20', category: 'rent', amount: 15000, description: 'Jan Rent'}];
+                updateDashboard(expenses);
+            }
+        }
+
+        function updateFilters() {
+            const month = document.getElementById("monthSelect").value;
+            const category = document.getElementById("categorySelect").value;
+            let filtered = expenses.filter(exp => (!month || exp.date.startsWith(month)) && (!category || exp.category === category));
+            updateDashboard(filtered);
+        }
+
+        function updateDashboard(data) {
+            let total = data.reduce((sum, exp) => sum + exp.amount, 0);
+            document.getElementById("totalExpense").textContent = `₹ ${total.toLocaleString()}`;
+
+            // Update List & Table
+            const list = document.getElementById("expenseList");
+            const table = document.getElementById("expenseTableBody");
+            list.innerHTML = ""; table.innerHTML = "";
+
+            data.forEach(exp => {
+                // List Item
+                let item = `<div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                    <div>
+                        <div class="fw-bold small">${exp.description || 'No Description'}</div>
+                        <small class="text-muted">${exp.date}</small>
+                    </div>
+                    <div class="fw-bold text-dark">₹${exp.amount}</div>
+                </div>`;
+                list.innerHTML += item;
+
+                // Table Row
+                let row = `<tr>
+                    <td class="px-4">${exp.date}</td>
+                    <td><span class="badge-cat">${exp.category}</span></td>
+                    <td>${exp.description || '-'}</td>
+                    <td class="px-4 text-end fw-bold">₹${exp.amount}</td>
+                </tr>`;
+                table.innerHTML += row;
+            });
+
+            updateChart(data);
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById("expenseChart").getContext("2d");
+            const cats = [...new Set(data.map(e => e.category))];
+            const totals = cats.map(c => data.filter(e => e.category === c).reduce((s, e) => s + e.amount, 0));
+
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: cats,
+                    datasets: [{
+                        data: totals,
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: { cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchExpenses);
+    </script>
+</body>
+</html>

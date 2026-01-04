@@ -1,0 +1,336 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Report</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      body {
+        display: flex;
+        transition: all 0.3s ease;
+        margin: 0;
+        padding: 0;
+      }
+
+      .head {
+        background: linear-gradient(
+          90deg,
+          hsla(59, 88%, 76%, 1) 0%,
+          hsla(326, 100%, 84%, 1) 100%
+        );
+      }
+
+      .sidebar {
+        width: 250px;
+        height: 100vh;
+        color: white;
+        padding-top: 20px;
+        position: fixed;
+        left: 0;
+        transition: all 0.3s ease-in-out;
+        background: linear-gradient(
+          90deg,
+          hsla(288, 20%, 75%, 1) 0%,
+          hsla(197, 65%, 42%, 1) 100%
+        );
+        z-index: 1000;
+      }
+
+      .sidebar a {
+        display: block;
+        padding: 10px;
+        color: white;
+        text-decoration: none;
+      }
+
+      .sidebar a:hover {
+        background: #495057;
+      }
+
+      .sidebar.hidden {
+        left: -250px;
+      }
+
+      .main-content {
+        margin-left: 260px;
+        padding: 20px;
+        width: 100%;
+        transition: margin-left 0.3s ease-in-out;
+      }
+
+      .main-content.expanded {
+        margin-left: 10px;
+      }
+
+      .toggle-btn {
+        position: absolute;
+        top: 20px;
+        left: 260px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 15px;
+        cursor: pointer;
+        transition: left 0.3s ease-in-out;
+        z-index: 1001;
+      }
+
+      .toggle-btn.collapsed {
+        left: 10px;
+      }
+
+      .view {
+        background: linear-gradient(
+          90deg,
+          hsla(238, 100%, 71%, 1) 0%,
+          hsla(295, 100%, 84%, 1) 100%
+        );
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <h4 class="text-center">Menu</h4>
+      <a href="#">Dashboard</a>
+      <a href="#">Expenses</a>
+      <a href="#">Reports</a>
+      <a href="#">Settings</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+      <!-- Toggle Button -->
+      <button class="toggle-btn" id="toggleBtn">☰</button>
+
+      <!-- Header -->
+      <h2 class="mb-4" style="margin-left: 33px;">Dashboard Overview</h2>
+
+      <!-- Summary Cards -->
+      <div class="row head p-2">
+        <div class="col-md-4 mt-2">
+          <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Total Expenses</h5>
+              <p class="card-text" id="totalExpense">₹ 0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4 mt-2">
+          <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Monthly Expense</h5>
+              <p class="card-text" id="monthlyExpense">₹ 0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4 mt-2">
+          <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Year Expense</h5>
+              <p class="card-text" id="yearExpense">₹ 0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4 mt-2">
+          <div class="card text-white bg-danger mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Categories</h5>
+              <p class="card-text" id="categoryList">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="row view">
+        <div class="col-md-6">
+          <canvas id="expenseChart"></canvas>
+        </div>
+        <div class="col-md-6">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleBtn");
+        const mainContent = document.getElementById("mainContent");
+
+        let expenseChart, categoryChart;
+
+        // Sidebar Toggle Functionality
+        toggleBtn.addEventListener("click", function () {
+          sidebar.classList.toggle("hidden");
+          mainContent.classList.toggle("expanded");
+          toggleBtn.classList.toggle("collapsed");
+        });
+
+        // Fetch expenses from API
+        fetchExpenses();
+
+        function fetchExpenses() {
+          fetch("http://127.0.0.1:8000/expenses/getexpenses/")
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.expenses) {
+                updateDashboard(data.expenses);
+              } else {
+                console.error("Invalid response format");
+                document.getElementById("totalExpense").textContent =
+                  "Error fetching data";
+              }
+            })
+            .catch((error) => {
+              console.error("Error fetching expenses:", error);
+              document.getElementById("totalExpense").textContent =
+                "Error loading data";
+            });
+        }
+
+        function updateDashboard(expenses) {
+          let total = expenses.reduce(
+            (sum, e) => sum + parseFloat(e.amount),
+            0
+          );
+          document.getElementById("totalExpense").textContent =
+            "₹ " + total.toFixed(2);
+
+          let months = new Set(expenses.map((e) => e.date.slice(0, 7))).size;
+          let monthlyExpense = months ? total / months : total;
+          document.getElementById("monthlyExpense").textContent =
+            "₹ " + monthlyExpense.toFixed(2);
+
+          let yearExpense = total; // You can customize this logic
+          document.getElementById("yearExpense").textContent =
+            "₹ " + yearExpense.toFixed(2);
+
+          let categoryData = {};
+          expenses.forEach((e) => {
+            categoryData[e.category] =
+              (categoryData[e.category] || 0) + parseFloat(e.amount);
+          });
+
+          let categories = Object.keys(categoryData);
+          let categoryAmounts = Object.values(categoryData);
+
+          document.getElementById("categoryList").textContent =
+            categories.join(", ");
+
+          // Update Charts
+          updateExpenseChart(expenses);
+          updateCategoryChart(categories, categoryAmounts);
+        }
+
+        function updateExpenseChart(expenses) {
+          const ctx = document.getElementById("expenseChart").getContext("2d");
+
+          let monthlyTotals = {};
+          expenses.forEach((e) => {
+            let month = e.date.slice(0, 7);
+            monthlyTotals[month] =
+              (monthlyTotals[month] || 0) + parseFloat(e.amount);
+          });
+
+          let months = Object.keys(monthlyTotals).sort();
+          let amounts = months.map((m) => monthlyTotals[m]);
+
+          if (expenseChart) {
+            expenseChart.destroy();
+          }
+
+          expenseChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: months,
+              datasets: [
+                {
+                  label: "Monthly Expenses",
+                  data: amounts,
+                  backgroundColor: "rgba(54, 162, 235, 0.2)",
+                  borderColor: "rgba(54, 162, 235, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+            },
+          });
+        }
+
+        function updateCategoryChart(categories, amounts) {
+          const ctx = document
+            .getElementById("categoryChart")
+            .getContext("2d");
+
+          if (categoryChart) {
+            categoryChart.destroy();
+          }
+
+          categoryChart = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: categories,
+              datasets: [
+                {
+                  label: "Categories",
+                  data: amounts,
+                  backgroundColor: [
+                    "#FF6384",
+                    "#36A2EB",
+                    "#FFCE56",
+                    "#4BC0C0",
+                    "#9966FF",
+                    "#FF9F40",
+                  ],
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+            },
+          });
+        }
+      });
+    </script>
+  </body>
+</html> {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

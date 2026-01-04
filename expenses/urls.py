@@ -1,0 +1,28 @@
+from django.urls import path
+from .views import *
+from django.conf import settings
+from django.conf.urls.static import static
+
+
+urlpatterns = [
+    # path('', expense_list, name='expense-list'),
+    # path('', expense_view, name='expense_view'),
+    path('expence/', expense_view, name='form_view'),
+    path('chart_view/', chart_view, name='chart_view'),
+    path('addexpence_view/', addexpence_view, name='addexpence_view'),
+    path('', dashboard_view, name='dashboard_view'),
+    path('dashboard_view/', dashboard_view, name='dashboard_view'),
+    # path('form/', form_view, name='form_view'),
+    # path('form/', form_view, name='form_view'),
+    
+    
+    # add
+    path('addexpenses/', ExpenseListCreateAPIView.as_view(), name='expense-list-create'),
+    path('addexpence/', addexpence, name='addexpence'),
+    path('getexpenses/', get_expenses, name='getexpenses'),
+    path('filter/', filter_view, name='filter_view'),
+    
+    # img pay ss
+    path('upload-form/', UploadFormView.as_view(), name='upload-form'),
+    path('upload-transaction/', TransactionOCRView.as_view(), name='upload-transaction'),
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

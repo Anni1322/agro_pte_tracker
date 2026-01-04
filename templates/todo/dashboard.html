@@ -1,0 +1,722 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Tracker | Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --primary-color: #4361ee;
+            --bg-light: #f8f9fa;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: #212529;
+            color: white;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 5px 15px;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styling */
+        .header {
+            background: white;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .card-stats { border-left: 5px solid var(--primary-color); border-radius: 12px; }
+        .progress { height: 12px; border-radius: 10px; }
+        footer { margin-top: auto; background: white; padding: 20px; text-align: center; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="p-4">
+            <h4 class="fw-bold"><i class="fas fa-check-double me-2 text-primary"></i>AgroPTE</h4>
+        </div>
+        <nav class="nav flex-column mt-2">
+            <a class="nav-link active" href="{% url 'todo_dashboard' %}"><i class="fas fa-home me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-list me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_add' %}"><i class="fas fa-plus-circle me-2"></i> Add New</a>
+            <hr class="mx-3 border-secondary">
+            <a class="nav-link" href="#"><i class="fas fa-cog me-2"></i> Settings</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold text-dark">Dashboard Overview</h5>
+            <div class="d-flex align-items-center">
+                <span class="me-3 d-none d-md-inline text-muted">Welcome, Admin</span>
+                <img src="https://ui-avatars.com/api/?name=Admin&background=4361ee&color=fff" class="rounded-circle" width="35" alt="profile">
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">🚀 Tracking Progress</h2>
+                <a href="{% url 'todo_add' %}" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill">+ New Task</a>
+            </div>
+
+            <div class="card mb-4 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title fw-bold">Task Completion Rate</h5>
+                        <span class="fw-bold text-primary">{{ percentage|floatformat:0 }}%</span>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" 
+                             style="width: {{ percentage }}%;">
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Total: <strong>{{ total }}</strong> | Completed: <span class="text-success">{{ completed }}</span> | Pending: <span class="text-warning">{{ total|add:"-completed" }}</span></p>
+                </div>
+            </div>
+
+            <div class="row">
+                {% for freq, tasks in stats.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card h-100 border-0 shadow-sm card-stats">
+                        <div class="card-body">
+                            <h6 class="text-uppercase text-muted small fw-bold mb-3">{{ freq }}</h6>
+                            <div class="d-flex align-items-center mb-3">
+                                <h2 class="mb-0 fw-bold">{{ tasks.count }}</h2>
+                                <span class="ms-2 badge bg-primary-subtle text-primary">Tasks</span>
+                            </div>
+                            <ul class="list-unstyled mb-0">
+                                {% for task in tasks|slice:":3" %}
+                                <li class="small text-truncate py-1 border-top mt-1">
+                                    {% if task.is_completed %}
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                    {% else %}
+                                        <i class="far fa-circle text-muted me-1"></i>
+                                    {% endif %} 
+                                    {{ task.title }}
+                                </li>
+                                {% empty %}
+                                <li class="text-muted small">No active tasks</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card border-0 shadow-sm mt-2">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-hourglass-half me-2 text-warning"></i>Recently Pending</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Task Name</th>
+                                <th>Frequency</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for freq, tasks in stats.items %}
+                                {% for task in tasks %}
+                                    {% if not task.is_completed %}
+                                    <tr>
+                                        <td class="ps-4 fw-medium">{{ task.title }}</td>
+                                        <td><span class="badge rounded-pill bg-light text-dark border">{{ task.get_frequency_display }}</span></td>
+                                        <td><span class="badge bg-warning-subtle text-warning px-3">Pending</span></td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-outline-primary rounded-circle"><i class="fas fa-edit"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="text-muted small">
+                &copy; 2026 <strong>AgroPTE Tracker</strong>. All rights reserved.
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> {% endcomment %}
+
+
+
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Tracker | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4e54c8;
+            --primary-light: #f0f1ff;
+            --bg-light: #f4f7fe;
+            --text-dark: #2d3748;
+            --text-muted: #718096;
+        }
+
+        body { 
+            background-color: var(--bg-light); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark);
+            overflow-x: hidden; 
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: #1a202c;
+            color: white;
+            transition: all 0.3s;
+            z-index: 1000;
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .sidebar-brand {
+            padding: 25px;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar .nav-link {
+            color: #a0aec0;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin: 4px 15px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .sidebar .nav-link.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(78, 84, 200, 0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Modern Header */
+        .header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            height: 75px;
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .logout-btn {
+            text-decoration: none;
+            color: #e53e3e;
+            background: #fff5f5;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #feb2b2;
+            color: #9b2c2c;
+        }
+
+        /* Cards & UI Elements */
+        .card {
+            border: none;
+            border-radius: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card-stats { 
+            border-left: 6px solid var(--primary-color); 
+        }
+
+        .card-stats:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+        }
+
+        .progress { 
+            height: 8px; 
+            border-radius: 10px; 
+            background-color: var(--primary-light);
+        }
+
+        .user-badge { 
+            font-size: 0.7rem; 
+            padding: 5px 10px; 
+            border-radius: 8px; 
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .badge-provider { background: #e0e7ff; color: #4338ca; }
+        .badge-taker { background: #fffbeb; color: #92400e; }
+        
+        .table thead th {
+            background-color: var(--bg-light);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border: none;
+        }
+
+        footer { 
+            background: transparent; 
+            padding: 25px; 
+            text-align: center; 
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { left: -100%; }
+            .main-content { margin-left: 0; }
+            .header { padding: 0 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h4 class="fw-bold mb-0"><i class="fas fa-layer-group me-2 text-primary"></i>AgroPTE</h4>
+        </div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="{% url 'todo_dashboard' %}"><i class="fas fa-grid-2 me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_add' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+            <div class="px-4 py-3"><hr class="border-secondary opacity-25 m-0"></div>
+            <a class="nav-link" href="#"><i class="fas fa-sliders-h me-2"></i> Settings</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold">Overview</h5>
+            
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end d-none d-md-block">
+                    <div class="fw-bold small">{{ request.user.username|capfirst }}</div>
+                    <div class="text-muted small" style="font-size: 0.7rem;">Admin Account</div>
+                </div>
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle border border-2 border-white shadow-sm" width="40" alt="avatar">
+                <a href="{% url 'logout' %}" class="logout-btn small"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            
+            <div class="row align-items-center mb-4">
+                <div class="col">
+                    <h2 class="fw-bold mb-1">Task Analytics</h2>
+                    <p class="text-muted small mb-0">Monitor your team's real-time productivity</p>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'todo_add' %}" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill fw-bold">
+                        <i class="fas fa-plus me-2"></i>Create Task
+                    </a>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="text-muted small text-uppercase fw-bold mb-1">Overall Completion</h6>
+                            <h4 class="fw-bold mb-0">Team Productivity</h4>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-bold">{{ percentage|floatformat:0 }}% Complete</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ percentage }}%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                {% for freq, tasks in stats.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm card-stats">
+                        <div class="card-body">
+                            <h6 class="text-uppercase text-muted small fw-bold mb-3">{{ freq }}</h6>
+                            <div class="d-flex align-items-baseline mb-3">
+                                <h2 class="mb-0 fw-bold">{{ tasks.count }}</h2>
+                                <span class="ms-2 text-muted">Tasks</span>
+                            </div>
+                            <div class="task-preview">
+                                {% for task in tasks|slice:":2" %}
+                                <div class="p-2 bg-light rounded-3 mb-2">
+                                    <div class="text-truncate small fw-bold mb-1">{{ task.title }}</div>
+                                    <span class="user-badge badge-taker"><i class="fas fa-user-circle me-1"></i>{{ task.assigned_to.username|truncatechars:10 }}</span>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-inbox text-muted opacity-25 mb-2 d-block"></i>
+                                    <span class="text-muted small">No active tasks</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card shadow-sm mt-2">
+                <div class="card-header bg-white border-0 py-4 px-4">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-stream me-2 text-primary"></i>Active Assignment Tracking</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Task Detail</th>
+                                <th>Provider</th>
+                                <th>Assignee</th>
+                                <th>Frequency</th>
+                                <th class="text-end pe-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for freq, tasks in stats.items %}
+                                {% for task in tasks %}
+                                    {% if not task.is_completed %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">{{ task.title }}</div>
+                                            <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{{ task.created_at|date:"D, d M" }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="user-badge badge-provider">
+                                                {{ task.created_by.username|default:"Admin"|capfirst }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="user-badge badge-taker">
+                                                {{ task.assigned_to.username|capfirst }}
+                                            </span>
+                                        </td>
+                                        <td><span class="badge rounded-pill bg-white text-dark border px-3">{{ task.get_frequency_display }}</span></td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-light border fw-bold px-3">Edit</a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="small">
+                &copy; 2026 <strong>AgroPTE Tracker</strong> • Made for Efficiency
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+
+
+{% comment %} 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgroPTE | Admin Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --sidebar-gradient: linear-gradient(180deg, #4e54c8 0%, #8f94fb 100%);
+            --header-gradient: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body { background-color: #f4f7f6; font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; display: flex; }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 260px; height: 100vh; position: fixed; left: 0; top: 0;
+            background: var(--sidebar-gradient); color: white; transition: var(--transition);
+            z-index: 1050; box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+        .sidebar.hidden { left: -260px; }
+        .sidebar-brand { padding: 2rem 1.5rem; font-weight: 800; font-size: 1.5rem; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar a {
+            padding: 12px 25px; color: rgba(255,255,255,0.8); text-decoration: none;
+            display: flex; align-items: center; transition: 0.2s; font-weight: 500;
+        }
+        .sidebar a i { width: 30px; font-size: 1.1rem; }
+        .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,0.15); color: white; border-left: 4px solid #fff; }
+
+        /* Main Content */
+        .main-content { margin-left: 260px; width: 100%; transition: var(--transition); min-height: 100vh; }
+        .main-content.expanded { margin-left: 0; }
+
+        /* Top Header Navigation */
+        .top-navbar {
+            background: white; padding: 15px 30px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 1000;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        }
+
+        .toggle-btn { background: #f8f9fa; border: none; padding: 8px 12px; border-radius: 8px; color: #4e54c8; font-size: 1.2rem; cursor: pointer; }
+        .logout-btn { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 8px 18px; border-radius: 8px; font-weight: 600; text-decoration: none; transition: 0.2s; }
+        .logout-btn:hover { background: #e11d48; color: white; }
+
+        /* Cards & Components */
+        .stat-card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); transition: transform 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .gradient-view { background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%); border-radius: 16px; padding: 25px; border: 1px solid #edf2f7; }
+        
+        /* Task Progress Bar */
+        .task-progress-container { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border-left: 5px solid #4e54c8; }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-brand text-center">AGRO PTE</div>
+        <div class="mt-4">
+            <a href="#" class="active"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="{% url 'todo_list' %}"><i class="fas fa-check-double"></i> My Tasks</a>
+            <a href="{% url 'todo_dashboard' %}"><i class="fas fa-users-cog"></i> Assignments</a>
+            <a href="#"><i class="fas fa-wallet"></i> Expenses</a>
+            <a href="#"><i class="fas fa-file-invoice-dollar"></i> Reports</a>
+            <hr class="mx-3 border-light opacity-25">
+            <a href="#"><i class="fas fa-cog"></i> Settings</a>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        
+        <nav class="top-navbar">
+            <div class="d-flex align-items-center">
+                <button class="toggle-btn me-3" id="toggleBtn"><i class="fas fa-bars"></i></button>
+                <h4 class="mb-0 fw-bold text-dark">System Overview</h4>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end d-none d-md-block">
+                    <div class="fw-bold small">{{ request.user.username|capfirst }}</div>
+                    <div class="text-muted small">Admin Account</div>
+                </div>
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle" width="40" alt="avatar">
+                <a href="{% url 'logout' %}" class="logout-btn small"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+            </div>
+        </nav>
+
+        <div class="container-fluid p-4">
+            
+            <div class="task-progress-container shadow-sm d-flex align-items-center justify-content-between">
+                <div class="flex-grow-1 me-4">
+                    <h6 class="fw-bold text-muted small text-uppercase mb-2">Team Task Completion</h6>
+                    <div class="progress" style="height: 12px; border-radius: 10px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: {{ percentage }}%; background: #4e54c8;"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h4 class="fw-bold mb-0 text-primary">{{ percentage|floatformat:0 }}%</h4>
+                    <small class="text-muted">Efficiency</small>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <div class="card stat-card p-3 border-start border-primary border-4">
+                        <small class="text-muted fw-bold">TOTAL EXPENSES</small>
+                        <h3 class="fw-bold mt-2" id="totalExpense">₹ 0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card p-3 border-start border-success border-4">
+                        <small class="text-muted fw-bold">MONTHLY AVG</small>
+                        <h3 class="fw-bold mt-2" id="monthlyExpense">₹ 0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card p-3 border-start border-warning border-4">
+                        <small class="text-muted fw-bold">PENDING TASKS</small>
+                        <h3 class="fw-bold mt-2 text-warning">{{ total|add:"-completed" }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card p-3 border-start border-info border-4">
+                        <small class="text-muted fw-bold">COMPLETED</small>
+                        <h3 class="fw-bold mt-2 text-info">{{ completed }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-lg-8">
+                    <div class="gradient-view shadow-sm h-100">
+                        <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-chart-line me-2 text-primary"></i>Expense Analytics</h5>
+                        <div style="height: 350px;">
+                            <canvas id="expenseChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="gradient-view shadow-sm h-100">
+                        <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-chart-pie me-2 text-primary"></i>Categorization</h5>
+                        <div style="height: 350px;">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card stat-card mt-4 border-0 shadow-sm">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark">Active Todo Items</h5>
+                    <a href="{% url 'todo_list' %}" class="btn btn-sm btn-link text-primary fw-bold text-decoration-none">View All <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Task Name</th>
+                                <th>Assigned To</th>
+                                <th>Frequency</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for freq, tasks in stats.items %}
+                                {% for task in tasks|slice:":3" %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-dark">{{ task.title }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-primary border border-primary px-2 py-1">
+                                            <i class="fas fa-user-circle me-1"></i> {{ task.assigned_to.username|capfirst }}
+                                        </span>
+                                    </td>
+                                    <td>{{ task.get_frequency_display }}</td>
+                                    <td class="text-center">
+                                        {% if task.is_completed %}
+                                            <span class="badge rounded-pill bg-success-subtle text-success border border-success px-3">Done</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning px-3">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebar = document.getElementById("sidebar");
+            const toggleBtn = document.getElementById("toggleBtn");
+            const mainContent = document.getElementById("mainContent");
+
+            // Sidebar Toggle Logic
+            toggleBtn.addEventListener("click", function () {
+                sidebar.classList.toggle("hidden");
+                mainContent.classList.toggle("expanded");
+            });
+
+            // Re-draw charts when window resizes to ensure modern responsiveness
+            window.addEventListener('resize', () => {
+                if (expenseChart) expenseChart.resize();
+                if (categoryChart) categoryChart.resize();
+            });
+
+  
+        });
+    </script>
+</body>
+</html> {% endcomment %}

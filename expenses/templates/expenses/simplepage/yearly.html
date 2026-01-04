@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            display: flex;
+            transition: all 0.3s ease;
+        }
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background: #343a40;
+            color: white;
+            padding-top: 20px;
+            position: fixed;
+            left: 0;
+            transition: all 0.3s ease-in-out;
+        }
+        .sidebar a {
+            display: block;
+            padding: 10px;
+            color: white;
+            text-decoration: none;
+        }
+        .sidebar a:hover {
+            background: #495057;
+        }
+        .sidebar.hidden {
+            left: -250px;
+        }
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            width: 100%;
+            transition: margin-left 0.3s ease-in-out;
+        }
+        .main-content.expanded {
+            margin-left: 10px;
+        }
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            left: 260px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: left 0.3s ease-in-out;
+        }
+        .toggle-btn.collapsed {
+            left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <h3 class="text-center">Dashboard</h3>
+        <a href="#">Overview</a>
+        <a href="#">Reports</a>
+        <a href="#">Expenses</a>
+        <a href="#">Settings</a>
+    </div>
+    <button class="toggle-btn" id="toggleBtn">☰</button>
+    <div class="main-content" id="mainContent">
+        <h2 class="mb-4">Dashboard Overview</h2>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Expenses</h5>
+                        <p class="card-text" id="totalExpense">₹ 0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Monthly Expense</h5>
+                        <p class="card-text" id="monthlyExpense">₹ 0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-warning mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Yearly Expense</h5>
+                        <p class="card-text" id="yearlyExpense">₹ 0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <canvas id="expenseChart"></canvas>
+            </div>
+            <div class="col-md-6">
+                <canvas id="yearlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebar = document.getElementById("sidebar");
+            const toggleBtn = document.getElementById("toggleBtn");
+            const mainContent = document.getElementById("mainContent");
+            let expenseChart, yearlyChart;
+
+            toggleBtn.addEventListener("click", function () {
+                sidebar.classList.toggle("hidden");
+                mainContent.classList.toggle("expanded");
+                toggleBtn.classList.toggle("collapsed");
+            });
+
+            fetchExpenses();
+
+            function fetchExpenses() {
+                fetch("http://127.0.0.1:8000/expenses/getexpenses/")
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.expenses) {
+                            updateDashboard(data.expenses);
+                        } else {
+                            document.getElementById("totalExpense").textContent = "Error fetching data";
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById("totalExpense").textContent = "Error loading data";
+                    });
+            }
+
+            function updateDashboard(expenses) {
+                let total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+                document.getElementById("totalExpense").textContent = "₹ " + total.toFixed(2);
+                
+                let months = new Set(expenses.map(e => e.date.slice(0, 7))).size;
+                let monthlyExpense = months ? total / months : total;
+                document.getElementById("monthlyExpense").textContent = "₹ " + monthlyExpense.toFixed(2);
+                
+                let yearlyData = {};
+                expenses.forEach(e => {
+                    let year = e.date.slice(0, 4);
+                    yearlyData[year] = (yearlyData[year] || 0) + parseFloat(e.amount);
+                });
+                
+                let years = Object.keys(yearlyData);
+                let yearAmounts = Object.values(yearlyData);
+                document.getElementById("yearlyExpense").textContent = "₹ " + yearAmounts.reduce((a, b) => a + b, 0).toFixed(2);
+                
+                if (yearlyChart) yearlyChart.destroy();
+                yearlyChart = new Chart(document.getElementById("yearlyChart"), {
+                    type: "line",
+                    data: {
+                        labels: years,
+                        datasets: [{
+                            label: "Yearly Expenses",
+                            data: yearAmounts,
+                            backgroundColor: "rgba(255, 99, 132, 0.2)",
+                            borderColor: "rgba(255, 99, 132, 1)",
+                            borderWidth: 2,
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

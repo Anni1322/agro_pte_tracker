@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Tasks | AgroPTE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4e54c8;
+            --bg-light: #f4f7fe;
+            --text-dark: #2d3748;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: var(--text-dark); overflow-x: hidden; }
+
+        /* Sidebar & Header */
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; left: 0; top: 0; background: #1a202c; color: white; z-index: 1000; }
+        .sidebar-brand { padding: 25px; font-size: 1.25rem; }
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; font-weight: 500; }
+        .sidebar .nav-link:hover { background: rgba(255,255,255,0.05); color: white; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; }
+
+        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .header { 
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(10px); 
+            height: 75px; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 30px; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            position: sticky; top: 0; z-index: 999;
+        }
+
+        .logout-btn { text-decoration: none; color: #e53e3e; background: #fff5f5; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; }
+
+        /* Content UI */
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .table thead th { background-color: #f8fafc; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: #718096; border: none; padding: 15px 20px; }
+        .btn-action { border-radius: 10px; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        
+        /* Status Badges */
+        .status-pill { padding: 6px 14px; border-radius: 10px; font-weight: 600; font-size: 0.75rem; display: inline-flex; align-items: center; }
+        .status-completed { background: #dcfce7; color: #15803d; }
+        .status-pending { background: #fef9c3; color: #a16207; }
+
+        footer { padding: 25px; text-align: center; color: #718096; margin-top: auto; }
+
+        @media (max-width: 768px) { .sidebar { left: -100%; } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h4 class="fw-bold mb-0"><i class="fas fa-layer-group me-2 text-primary"></i>AgroPTE</h4>
+        </div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link" href="{% url 'todo_dashboard' %}"><i class="fas fa-th-large me-2"></i> Dashboard</a>
+            <a class="nav-link active" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_add' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+            <div class="px-4 py-3"><hr class="border-secondary opacity-25 m-0"></div>
+            <a class="nav-link" href="#"><i class="fas fa-cog me-2"></i> Settings</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold">Task Explorer</h5>
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end d-none d-md-block">
+                    <div class="fw-bold small">{{ request.user.username|capfirst }}</div>
+                    <div class="text-muted small" style="font-size: 0.7rem;">Admin Account</div>
+                </div>
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle shadow-sm" width="40" alt="avatar">
+                <a href="{% url 'logout' %}" class="logout-btn"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            
+            <div class="row align-items-end mb-4">
+                <div class="col">
+                    <h2 class="fw-bold mb-1">🎯 All Tasks</h2>
+                    <p class="text-muted mb-0">Full breakdown of system activities.</p>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'todo_add' %}" class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm">
+                        <i class="fas fa-plus me-2"></i>New Task
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100 p-4">
+                        <h6 class="section-label mb-3 fw-bold text-uppercase small text-primary">Distribution Graph</h6>
+                        <div style="position: relative; height:250px;">
+                            <canvas id="taskDistributionChart"></canvas>
+                        </div>
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between small mb-2">
+                                <span><i class="fas fa-circle text-success me-2"></i>Completed</span>
+                                <span class="fw-bold" id="completeCount">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span><i class="fas fa-circle text-warning me-2"></i>Pending</span>
+                                <span class="fw-bold" id="pendingCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8 mb-4">
+                    <div class="card h-100">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Task Details</th>
+                                        <th>Frequency</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-4">Manage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for todo in todos %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold text-dark">{{ todo.title }}</div>
+                                            <small class="text-muted">{{ todo.description|default:"No notes provided"|truncatechars:40 }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border px-2 py-1">
+                                                <i class="far fa-clock me-1 text-primary"></i> {{ todo.get_frequency_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if todo.is_completed %}
+                                                <span class="status-pill status-completed" data-status="complete">
+                                                    <i class="fas fa-check-circle me-1"></i> Completed
+                                                </span>
+                                            {% else %}
+                                                <span class="status-pill status-pending" data-status="pending">
+                                                    <i class="fas fa-hourglass-half me-1"></i> Pending
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' todo.id %}" class="btn btn-outline-primary btn-action" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'todo_delete' todo.id %}" class="btn btn-outline-danger btn-action ms-1" title="Delete">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5">
+                                            <img src="https://cdn-icons-png.flaticon.com/512/4076/4076432.png" width="80" class="opacity-25 mb-3">
+                                            <p class="text-muted">No tasks in the records yet.</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="small">
+                &copy; 2026 <strong>AgroPTE Tracker</strong> • Task Management System
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Logic to count status from the table for the Graph
+        document.addEventListener('DOMContentLoaded', function() {
+            const completes = document.querySelectorAll('.status-pill[data-status="complete"]').length;
+            const pendings = document.querySelectorAll('.status-pill[data-status="pending"]').length;
+            
+            document.getElementById('completeCount').innerText = completes;
+            document.getElementById('pendingCount').innerText = pendings;
+
+            const ctx = document.getElementById('taskDistributionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Pending'],
+                    datasets: [{
+                        data: [completes, pendings],
+                        backgroundColor: ['#10b981', '#f59e0b'],
+                        hoverOffset: 4,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    cutout: '70%'
+                }
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

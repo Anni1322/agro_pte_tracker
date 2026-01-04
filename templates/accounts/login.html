@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Login | Modern App</title>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg">
+        <div class="text-center">
+            <h2 class="text-3xl font-bold text-gray-900">Welcome Back</h2>
+            <p class="text-sm text-gray-500 mt-2">Please enter your details to sign in</p>
+        </div>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            
+            <div class="django-form-container">
+                {{ form.as_p }}
+            </div>
+
+            <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition duration-200">
+                Sign In
+            </button>
+        </form>
+
+        <div class="text-center pt-4 border-t border-gray-100">
+            <p class="text-sm text-gray-600">
+                New here? <a href="{% url 'signup' %}" class="text-indigo-600 font-medium hover:underline">Create account</a>
+            </p>
+        </div>
+    </div>
+
+    <style>
+        /* This cleans up the default {{ form.as_p }} styling */
+        .django-form-container p { margin-bottom: 1rem; }
+        .django-form-container label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+        .django-form-container input { 
+            width: 100%; padding: 0.625rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none;
+        }
+        .django-form-container input:focus { border-color: #4f46e5; ring: 2px; ring-color: #c7d2fe; }
+        .errorlist { color: #dc2626; font-size: 0.875rem; list-style: none; padding: 0; }
+    </style>
+</body>
+</html>

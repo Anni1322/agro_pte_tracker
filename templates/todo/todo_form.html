@@ -1,0 +1,458 @@
+ {% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Task</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; border-radius: 15px; }
+        .form-control, .form-select { border-radius: 10px; padding: 12px; border: 1px solid #e0e0e0; }
+        .form-control:focus { box-shadow: 0 0 0 0.25 red; border-color: #0d6efd; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.1); }
+        .btn-modern { border-radius: 10px; padding: 12px 25px; font-weight: 600; transition: all 0.3s; }
+        .btn-modern:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-tasks fa-3x text-primary mb-3"></i>
+                        <h2 class="fw-bold">{% if todo %}Edit Task{% else %}Create New Task{% endif %}</h2>
+                        <p class="text-muted">Fill in the details below to track your progress.</p>
+                    </div>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Task Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Pay Internet Bill" value="{{ todo.title|default:'' }}" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Description (Optional)</label>
+                            <textarea name="description" class="form-control" rows="3" placeholder="Add some details...">{{ todo.description|default:'' }}</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Repeat Frequency</label>
+                            <select name="frequency" class="form-select">
+                                <option value="daily" {% if todo.frequency == 'daily' %}selected{% endif %}>📅 Daily</option>
+                                <option value="weekly" {% if todo.frequency == 'weekly' %}selected{% endif %}>🗓️ Weekly</option>
+                                <option value="monthly" {% if todo.frequency == 'monthly' %}selected{% endif %}>📊 Monthly</option>
+                                <option value="yearly" {% if todo.frequency == 'yearly' %}selected{% endif %}>🎆 Yearly</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4 d-flex align-items-center justify-content-between p-3 border rounded bg-light">
+                            <div>
+                                <h6 class="mb-0 fw-bold">Task Status</h6>
+                                <small class="text-muted">Is this task already finished?</small>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_completed" id="statusSwitch" style="width: 3em; height: 1.5em;" {% if todo.is_completed %}checked{% endif %}>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-modern">
+                                <i class="fas fa-save me-2"></i>Save Task
+                            </button>
+                            <a href="{% url 'todo_list' %}" class="btn btn-light btn-modern">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html> 
+  {% endcomment %}
+
+
+
+
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Task | AgroPTE</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --primary-gradient: linear-gradient(180deg, #2b32b2 0%, #1488cc 100%);
+            --bg-light: #f4f7f6;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: var(--primary-gradient);
+            color: white;
+            z-index: 1000;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+        .sidebar-header { padding: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar a {
+            padding: 15px 25px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: 0.2s;
+        }
+        .sidebar a i { width: 30px; }
+        .sidebar a:hover, .sidebar a.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-left: 4px solid #fff;
+        }
+
+        .top-nav {
+            height: 70px;
+            background: white;
+            width: calc(100% - var(--sidebar-width));
+            position: fixed;
+            top: 0;
+            left: var(--sidebar-width);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: 70px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .card { border: none; border-radius: 15px; }
+        .form-control, .form-select { border-radius: 10px; padding: 12px; border: 1px solid #e0e0e0; }
+        .form-control:focus { border-color: #0d6efd; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.1); }
+        .btn-modern { border-radius: 10px; padding: 12px 25px; font-weight: 600; transition: all 0.3s; }
+        .btn-modern:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .logout-btn {
+            background: #ff4757; color: white; border-radius: 8px;
+            padding: 8px 18px; text-decoration: none; font-weight: 600; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h4 class="fw-bold m-0">AGRO PTE</h4>
+        </div>
+        <div class="mt-3">
+            <a href="{% url 'todo_dashboard' %}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="{% url 'todo_list' %}"><i class="fas fa-tasks"></i> Todo Tasks</a>
+            <a href="{% url 'todo_add' %}" class="active"><i class="fas fa-plus-circle"></i> Add Task</a>
+            {% comment %} <a href="#"><i class="fas fa-wallet"></i> Expenses</a> {% endcomment %}
+            <hr class="mx-3 text-white-50">
+            {% comment %} <a href="#"><i class="fas fa-cog"></i> Settings</a> {% endcomment %}
+        </div>
+    </div>
+
+    <nav class="top-nav">
+        <div class="d-flex align-items-center">
+            <h5 class="mb-0 fw-bold">{% if todo %}Edit Task{% else %}New Task{% endif %}</h5>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted d-none d-md-block small">Welcome, <strong>{{ request.user.username|capfirst }}</strong></span>
+            <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4361ee&color=fff" class="rounded-circle" width="35" alt="profile">
+            <a href="{% url 'logout' %}" class="logout-btn"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-lg">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-tasks fa-3x text-primary mb-3"></i>
+                            <h2 class="fw-bold">{% if todo %}Edit Task{% else %}Create New Task{% endif %}</h2>
+                            <p class="text-muted">Enter task details below</p>
+                        </div>
+
+                        <form method="POST">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Task Title</label>
+                                <input type="text" name="title" class="form-control" placeholder="e.g. Daily Inventory Check" value="{{ todo.title|default:'' }}" required>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Assign To (Task Taker)</label>
+                                <select name="assigned_to" class="form-select">
+                                    
+                                {% if request.user.is_superuser %}
+                                        {% for user in users %}
+                                            <option value="{{ user.id }}" {% if todo.assigned_to.id == user.id %}selected{% endif %}>
+                                                👤 {{ user.username|capfirst }}
+                                            </option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="{{ request.user.id }}" selected>
+                                            👤 {{ request.user.username|capfirst }} (Me)
+                                        </option>
+                                    {% endif %}  
+                                </select>
+                                <small class="text-muted">
+                                    {% if request.user.is_superuser %}
+                                        Super Admin: You can assign this task to anyone.
+                                    {% else %}
+                                        User: You are assigning this task to yourself.
+                                    {% endif %}
+                                </small>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Description (Optional)</label>
+                                <textarea name="description" class="form-control" rows="3" placeholder="Additional instructions...">{{ todo.description|default:'' }}</textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Repeat Frequency</label>
+                                <select name="frequency" class="form-select">
+                                    <option value="daily" {% if todo.frequency == 'daily' %}selected{% endif %}>📅 Daily</option>
+                                    <option value="weekly" {% if todo.frequency == 'weekly' %}selected{% endif %}>🗓️ Weekly</option>
+                                    <option value="monthly" {% if todo.frequency == 'monthly' %}selected{% endif %}>📊 Monthly</option>
+                                    <option value="yearly" {% if todo.frequency == 'yearly' %}selected{% endif %}>🎆 Yearly</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-4 d-flex align-items-center justify-content-between p-3 border rounded bg-light">
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Task Status</h6>
+                                    <small class="text-muted">Mark as finished?</small>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="is_completed" id="statusSwitch" style="width: 3em; height: 1.5em; cursor: pointer;" {% if todo.is_completed %}checked{% endif %}>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-modern">
+                                    <i class="fas fa-save me-2"></i>Save Task
+                                </button>
+                                <a href="{% url 'todo_list' %}" class="btn btn-light btn-modern">
+                                    Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
+
+
+
+{% comment %} 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Task | AgroPTE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4e54c8;
+            --bg-light: #f4f7fe;
+            --text-dark: #2d3748;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+
+        /* Sidebar & Header (Same as Dashboard) */
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; left: 0; top: 0; background: #1a202c; color: white; z-index: 1000; }
+        .sidebar-brand { padding: 25px; font-size: 1.25rem; }
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; font-weight: 500; }
+        .sidebar .nav-link:hover { background: rgba(255,255,255,0.05); color: white; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; }
+
+        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .header { 
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(10px); 
+            height: 75px; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 30px; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            position: sticky; top: 0; z-index: 999;
+        }
+
+        .logout-btn { text-decoration: none; color: #e53e3e; background: #fff5f5; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; }
+
+        /* Form Styling */
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .section-label { color: var(--primary-color); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 8px; display: block; }
+        .form-control, .form-select { border-radius: 12px; padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; }
+        .form-control:focus, .form-select:focus { background-color: #fff; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(78, 84, 200, 0.1); }
+        .btn-modern { border-radius: 12px; padding: 14px; font-weight: 600; transition: all 0.3s; }
+        
+        footer { padding: 25px; text-align: center; color: #718096; margin-top: auto; }
+
+        @media (max-width: 768px) {
+            .sidebar { left: -100%; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h4 class="fw-bold mb-0"><i class="fas fa-layer-group me-2 text-primary"></i>AgroPTE</h4>
+        </div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link" href="{% url 'todo_dashboard' %}"><i class="fas fa-th-large me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link active" href="{% url 'todo_add' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+            <div class="px-4 py-3"><hr class="border-secondary opacity-25 m-0"></div>
+            <a class="nav-link" href="#"><i class="fas fa-cog me-2"></i> Settings</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold">Manage Task</h5>
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end d-none d-md-block">
+                    <div class="fw-bold small">{{ request.user.username|capfirst }}</div>
+                    <div class="text-muted small" style="font-size: 0.7rem;">Admin Account</div>
+                </div>
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle shadow-sm" width="40" alt="avatar">
+                <a href="{% url 'logout' %}" class="logout-btn"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+            </div>
+        </header>
+
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-7 col-xl-6">
+                    <div class="card">
+                        <div class="card-body p-4 p-md-5">
+                            <div class="text-center mb-5">
+                                <div class="bg-primary-subtle d-inline-block p-3 rounded-circle mb-3">
+                                    <i class="fas fa-user-shield fa-2x text-primary"></i>
+                                </div>
+                                <h2 class="fw-bold">{% if todo %}Update Details{% else %}Create Task{% endif %}</h2>
+                                <p class="text-muted">Configure task parameters for the administrative team.</p>
+                            </div>
+
+                            <form method="POST">
+                                {% csrf_token %}
+                                
+                                <div class="mb-4">
+                                    <label class="section-label">Task Name</label>
+                                    <input type="text" name="title" class="form-control" placeholder="Enter task title..." value="{{ todo.title|default:'' }}" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="section-label">Assign To (Admins Only)</label>
+                                    <select name="assigned_to" class="form-select" required>
+                                        <option value="" disabled {% if not todo %}selected{% endif %}>Select Administrator...</option>
+                                        {% for user in users %}
+                                            {% if user.is_staff %} <option value="{{ user.id }}" {% if todo.assigned_to.id == user.id %}selected{% endif %}>
+                                                🛡️ {{ user.username|capfirst }}
+                                            </option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="section-label">Instructions</label>
+                                    <textarea name="description" class="form-control" rows="3" placeholder="Describe the task requirements...">{{ todo.description|default:'' }}</textarea>
+                                </div>
+
+                                <div class="row mb-4">
+                                    <div class="col-md-12">
+                                        <label class="section-label">Recurrence Frequency</label>
+                                        <select name="frequency" class="form-select">
+                                            <option value="daily" {% if todo.frequency == 'daily' %}selected{% endif %}>📅 Daily Basis</option>
+                                            <option value="weekly" {% if todo.frequency == 'weekly' %}selected{% endif %}>🗓️ Weekly Basis</option>
+                                            <option value="monthly" {% if todo.frequency == 'monthly' %}selected{% endif %}>📊 Monthly Basis</option>
+                                            <option value="yearly" {% if todo.frequency == 'yearly' %}selected{% endif %}>🎆 Yearly Basis</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-5 d-flex align-items-center justify-content-between p-3 border rounded-4 bg-light">
+                                    <div>
+                                        <h6 class="mb-0 fw-bold">Completion Status</h6>
+                                        <small class="text-muted">Mark if task is currently finished</small>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_completed" id="statusSwitch" style="width: 2.8em; height: 1.4em;" {% if todo.is_completed %}checked{% endif %}>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-3">
+                                    <button type="submit" class="btn btn-primary btn-modern shadow">
+                                        <i class="fas fa-check-circle me-2"></i> Save Task Configuration
+                                    </button>
+                                    <a href="{% url 'todo_dashboard' %}" class="btn btn-link text-muted text-decoration-none small">
+                                        Cancel and discard changes
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="small">
+                &copy; 2026 <strong>AgroPTE Tracker</strong> • Systematic Admin Controls
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> {% endcomment %}

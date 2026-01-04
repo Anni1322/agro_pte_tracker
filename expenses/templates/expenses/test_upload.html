@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload & View Transaction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .text-box {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            white-space: pre-line;
+        }
+        .form-section {
+            margin-bottom: 30px;
+        }
+        .confidence-box {
+            background-color: #e7f7ed;
+            padding: 10px;
+            margin-top: 10px;
+            border-left: 5px solid #2ecc71;
+            border-radius: 5px;
+        }
+        .parsed-box {
+            background-color: #f0f4ff;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 5px solid #3498db;
+            border-radius: 5px;
+        }
+        .parsed-box p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Upload Transaction Image</h2>
+        
+        <div class="form-section">
+            <form method="post" enctype="multipart/form-data" action="/upload-transaction/">
+                {% csrf_token %}
+                <input type="file" name="image" required>
+                <button type="submit">Upload Image</button>
+            </form>
+        </div>
+
+        {% if transaction %}
+            <h3>Uploaded Image:</h3>
+            <img src="{{ transaction.image.url }}" alt="Transaction Image">
+
+            <div class="text-box">
+                <strong>Extracted Text:</strong><br>
+                {{ transaction.extracted_text }}
+            </div>
+
+            {% if confidence is not None %}
+                <div class="confidence-box">
+                    <strong>OCR Accuracy:</strong> {{ confidence }}%
+                </div>
+            {% endif %}
+
+            <p><strong>Uploaded At:</strong> {{ transaction.upload_time }}</p>
+
+            {% if parsed %}
+                <div class="parsed-box">
+                    <h3>Parsed Transaction Details:</h3>
+
+                    {% if parsed.received %}
+                        <p><strong>Received from:</strong></p>
+                        <p>Name: {{ parsed.received.name }}</p>
+                        <p>Amount: {{ parsed.received.amount }}</p>
+                        <p>Date: {{ parsed.received.date }}</p>
+                        <p>Type: {{ parsed.received.type }}</p>
+                        <br>
+                    {% endif %}
+
+                    {% if parsed.paid %}
+                        <p><strong>Paid to:</strong></p>
+                        <p>Name: {{ parsed.paid.name }}</p>
+                        <p>Amount: {{ parsed.paid.amount }}</p>
+                        <p>Date: {{ parsed.paid.date }}</p>
+                        <p>Type: {{ parsed.paid.type }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>
