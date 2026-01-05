@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+
+    <div class="row">
+        <div class="col-md-4">
+            <h3 id="form-title">Add Expense</h3>
+            <form id="expense-form">
+                <input type="hidden" id="expense-id">
+                <div class="mb-3">
+                    <label>Date</label>
+                    <input type="date" id="date" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label>Category</label>
+                    <select id="category" class="form-control">
+                        <option value="rent">Rent</option>
+                        <option value="food">Food</option>
+                        <option value="transport">Transport</option>
+                        </select>
+                </div>
+                <div class="mb-3">
+                    <label>Amount</label>
+                    <input type="number" id="amount" class="form-control" step="0.01" required>
+                </div>
+                <div class="mb-3">
+                    <label>Description</label>
+                    <textarea id="description" class="form-control"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Save Expense</button>
+                <button type="button" id="cancel-btn" class="btn btn-secondary w-100 mt-2 d-none" onclick="resetForm()">Cancel</button>
+            </form>
+        </div>
+
+        <div class="col-md-8">
+            <h3>My Expenses</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="expense-table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const apiBase = '/expenses/';
+
+        // 1. Fetch and Display Expenses (READ)
+        async function loadExpenses() {
+            const response = await fetch(apiBase);
+            const data = await response.json();
+            const tableBody = document.getElementById('expense-table-body');
+            tableBody.innerHTML = '';
+
+            data.forEach(exp => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${exp.date}</td>
+                        <td>${exp.category}</td>
+                        <td>$${exp.amount}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="editExpense(${exp.id}, '${exp.date}', '${exp.category}', ${exp.amount}, '${exp.description}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteExpense(${exp.id})">Delete</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        // 2. Add or Update Expense (CREATE / UPDATE)
+        document.getElementById('expense-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('expense-id').value;
+            const payload = {
+                date: document.getElementById('date').value,
+                category: document.getElementById('category').value,
+                amount: document.getElementById('amount').value,
+                description: document.getElementById('description').value
+            };
+
+            const url = id ? `${apiBase}${id}/` : apiBase;
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                resetForm();
+                loadExpenses();
+            }
+        });
+
+        // 3. Delete Expense (DELETE)
+        async function deleteExpense(id) {
+            if (confirm('Are you sure?')) {
+                await fetch(`${apiBase}${id}/`, { method: 'DELETE' });
+                loadExpenses();
+            }
+        }
+
+        // UI Helpers
+        function editExpense(id, date, cat, amt, desc) {
+            document.getElementById('expense-id').value = id;
+            document.getElementById('date').value = date;
+            document.getElementById('category').value = cat;
+            document.getElementById('amount').value = amt;
+            document.getElementById('description').value = desc;
+            document.getElementById('form-title').innerText = "Edit Expense";
+            document.getElementById('cancel-btn').classList.remove('d-none');
+        }
+
+        function resetForm() {
+            document.getElementById('expense-form').reset();
+            document.getElementById('expense-id').value = '';
+            document.getElementById('form-title').innerText = "Add Expense";
+            document.getElementById('cancel-btn').classList.add('d-none');
+        }
+
+        // Initial Load
+        loadExpenses();
+    </script>
+</body>
+</html>

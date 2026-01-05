@@ -20,6 +20,7 @@ class Expense(models.Model):
 class Expense_day_wise(models.Model):
     CATEGORY_CHOICES = [
         ('rent', 'Rent'),
+        ('monthexpences', 'month expences'),
         ('food', 'Food'),
         ('helth', 'helth gedget'),
         ('helthfood', 'helth food'),

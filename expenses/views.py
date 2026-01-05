@@ -28,6 +28,11 @@ from .serializers import (
     TransactionImageSerializer
 )
 
+import json
+from django.shortcuts import get_object_or_404
+
+
+
 # =========================
 # DASHBOARD & PAGES (PROTECTED)
 # =========================
@@ -70,6 +75,11 @@ def filter_view(request):
 class UploadFormView(View):
     def get(self, request):
         return render(request, 'expenses/test_upload.html')
+
+
+
+def expense_page(request):
+    return render(request, 'expenses/simplepage/expenseLists.html')
 
 
 # =========================
@@ -188,27 +198,198 @@ def addexpence(request):
 
 
 
+
+@csrf_exempt
+@login_required
+def expense_list_create(request):
+    # READ (List all expenses for the logged-in user)
+    if request.method == "GET":
+        expenses = Expense_day_wise.objects.filter(user=request.user).values()
+        return JsonResponse(list(expenses), safe=False)
+
+    # CREATE
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            expense = Expense_day_wise.objects.create(
+                user=request.user,
+                date=data.get("date"),
+                category=data.get("category"),
+                amount=data.get("amount"),
+                description=data.get("description", "")
+            )
+            return JsonResponse({"id": expense.id, "message": "Created successfully"}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+@csrf_exempt
+@login_required
+# def expense_detail(request, pk):
+#     expense = get_object_or_404(Expense_day_wise, pk=pk, user=request.user)
+
+#     # UPDATE
+#     if request.method == "PUT":
+#         try:
+#             data = json.loads(request.body)
+#             expense.date = data.get("date", expense.date)
+#             expense.category = data.get("category", expense.category)
+#             expense.amount = data.get("amount", expense.amount)
+#             expense.description = data.get("description", expense.description)
+#             expense.save()
+#             return JsonResponse({"message": "Updated successfully"})
+#         except Exception as e:
+#             return JsonResponse({"error": str(e)}, status=400)
+
+#     # DELETE
+#     if request.method == "DELETE":
+#         expense.delete()
+#         return JsonResponse({"message": "Deleted successfully"}, status=204)
+
+#     return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+
+# from django.shortcuts import render
+# from django.http import JsonResponse
+# from .models import Expense
+# import json
+
+ 
+def add_expense(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        expense = Expense.objects.create(
+            date=data['date'],
+            category=data['category'],
+            amount=data['amount'],
+            description=data.get('description', ''),
+            # user=request.user # If using auth
+        )
+        return JsonResponse({"success": True, "id": expense.id})
+
+# def expense_detail(request, pk):
+#     try:
+#         expense = Expense.objects.get(pk=pk)
+#         if request.method == "PUT":
+#             data = json.loads(request.body)
+#             expense.date = data['date']
+#             expense.category = data['category']
+#             expense.amount = data['amount']
+#             expense.description = data.get('description', '')
+#             expense.save()
+#             return JsonResponse({"success": True})
+            
+#         elif request.method == "DELETE":
+#             expense.delete()
+#             return JsonResponse({"success": True})
+#     except Expense.DoesNotExist:
+#         return JsonResponse({"success": False, "error": "Not found"}, status=404)
+    
+def expense_detail(request, pk):
+    try:
+        # Security: Ensure users can only edit/delete THEIR own expenses
+        expense = Expense_day_wise.objects.get(pk=pk, user=request.user)
+        
+        if request.method == "PUT":
+            data = json.loads(request.body)
+            expense.date = data['date']
+            expense.category = data['category']
+            expense.amount = data['amount']
+            expense.description = data.get('description', '')
+            expense.save()
+            return JsonResponse({"success": True})
+            
+        elif request.method == "DELETE":
+            expense.delete()
+            return JsonResponse({"success": True})
+            
+    except Expense_day_wise.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Expense not found or unauthorized"}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+        
+
+# @login_required
+# def get_expenses(request):
+#     # expenses = Expense_day_wise.objects.all()
+#     if request.user.is_staff:
+#         expenses = Expense_day_wise.objects.all().order_by('-created_at')
+#     else:
+#         expenses = expenses = Expense_day_wise.objects.filter(user=request.user).values()   
+#     # expenses = Expense_day_wise.objects.filter(user=request.user).values()
+
+#     date = request.GET.get("date")
+#     month = request.GET.get("month")
+#     year = request.GET.get("year")
+#     category = request.GET.get("category")
+
+#     if date:
+#         expenses = expenses.filter(date=date)
+#     if month:
+#         expenses = expenses.filter(date__startswith=month)
+#     if year:
+#         expenses = expenses.filter(date__startswith=year)
+#     if category:
+#         expenses = expenses.filter(category__iexact=category)
+
+#     return JsonResponse({"expenses": list(expenses.values())}, status=200)
+
 @login_required
 def get_expenses(request):
-    # expenses = Expense_day_wise.objects.all()
-    expenses = Expense_day_wise.objects.filter(user=request.user).values()
+    # 1. Initialize QuerySet (Remove values() from here)
+    if request.user.is_staff:
+        # Use 'date' or '-id' since 'created_at' doesn't exist in your model
+        expenses = Expense_day_wise.objects.all().order_by('-date')
+    else:
+        expenses = Expense_day_wise.objects.filter(user=request.user).order_by('-date')
 
+    # 2. Get query parameters
     date = request.GET.get("date")
     month = request.GET.get("month")
     year = request.GET.get("year")
     category = request.GET.get("category")
 
+    # 3. Apply filters correctly for DateField
     if date:
         expenses = expenses.filter(date=date)
     if month:
-        expenses = expenses.filter(date__startswith=month)
+        # Better than startswith for DateFields
+        expenses = expenses.filter(date__month=month)
     if year:
-        expenses = expenses.filter(date__startswith=year)
+        expenses = expenses.filter(date__year=year)
     if category:
         expenses = expenses.filter(category__iexact=category)
 
-    return JsonResponse({"expenses": list(expenses.values())}, status=200)
+    # 4. Convert to list and return
+    # We call .values() here at the very end
+    data = list(expenses.values('id', 'date', 'category', 'amount', 'description','user__username'))
+    return JsonResponse({"expenses": data}, status=200)
 
+# @login_required
+# def get_expenses(request):
+#     # Filter by user first
+#     expenses = Expense_day_wise.objects.filter(user=request.user)
+
+#     # Get query parameters
+#     date = request.GET.get("date")
+#     month = request.GET.get("month") # Expected format: 1-12
+#     year = request.GET.get("year")   # Expected format: 2024
+#     category = request.GET.get("category")
+
+#     # Apply filters
+#     if date:
+#         expenses = expenses.filter(date=date)
+#     if month:
+#         expenses = expenses.filter(date__month=month)
+#     if year:
+#         expenses = expenses.filter(date__year=year)
+#     if category:
+#         expenses = expenses.filter(category__iexact=category)
+
+#     # Convert to list of dictionaries
+#     data = list(expenses.values('id', 'date', 'category', 'amount', 'description'))
+    
+#     return JsonResponse({"expenses": data}, status=200)
 
 # =========================
 # FORM BASED EXPENSE ADD
