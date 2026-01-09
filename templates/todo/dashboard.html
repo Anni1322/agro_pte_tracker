@@ -1,158 +1,109 @@
-{% comment %} <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo Tracker | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --sidebar-width: 250px;
-            --primary-color: #4361ee;
-            --bg-light: #f8f9fa;
-        }
-
-        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; overflow-x: hidden; }
-
-        /* Sidebar Styling */
-        .sidebar {
-            width: var(--sidebar-width);
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            background: #212529;
-            color: white;
-            transition: all 0.3s;
-            z-index: 1000;
-        }
-        .sidebar .nav-link {
-            color: #adb5bd;
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin: 5px 15px;
-        }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        /* Main Content Styling */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Header Styling */
-        .header {
-            background: white;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            padding: 0 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            position: sticky;
-            top: 0;
-            z-index: 999;
-        }
-
-        .card-stats { border-left: 5px solid var(--primary-color); border-radius: 12px; }
-        .progress { height: 12px; border-radius: 10px; }
-        footer { margin-top: auto; background: white; padding: 20px; text-align: center; border-top: 1px solid #dee2e6; }
+        :root { --sidebar-width: 260px; --primary-color: #4e54c8; --bg-light: #f4f7fe; }
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; display: flex; }
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; background: #1a202c; color: white; z-index: 1000; }
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; }
+        .main-content { margin-left: var(--sidebar-width); width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+        .header { background: white; height: 75px; display: flex; align-items: center; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 999; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-stats { border-left: 6px solid var(--primary-color); }
+        .user-badge { font-size: 0.7rem; padding: 5px 10px; border-radius: 8px; font-weight: 600; }
+        .badge-provider { background: #e0e7ff; color: #4338ca; }
+        .badge-taker { background: #fffbeb; color: #92400e; }
+        .chart-container { position: relative; height: 250px; width: 100%; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="p-4">
-            <h4 class="fw-bold"><i class="fas fa-check-double me-2 text-primary"></i>AgroPTE</h4>
-        </div>
-        <nav class="nav flex-column mt-2">
-            <a class="nav-link active" href="{% url 'todo_dashboard' %}"><i class="fas fa-home me-2"></i> Dashboard</a>
-            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-list me-2"></i> All Tasks</a>
-            <a class="nav-link" href="{% url 'todo_add' %}"><i class="fas fa-plus-circle me-2"></i> Add New</a>
-            <hr class="mx-3 border-secondary">
-            <a class="nav-link" href="#"><i class="fas fa-cog me-2"></i> Settings</a>
+        <div class="p-4"><h4 class="fw-bold mb-0">Goal Tracker</h4></div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="{% url 'todo_dashboard' %}"><i class="fas fa-chart-pie me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
         </nav>
     </div>
 
     <div class="main-content">
-        
         <header class="header justify-content-between">
-            <h5 class="mb-0 fw-bold text-dark">Dashboard Overview</h5>
-            <div class="d-flex align-items-center">
-                <span class="me-3 d-none d-md-inline text-muted">Welcome, Admin</span>
-                <img src="https://ui-avatars.com/api/?name=Admin&background=4361ee&color=fff" class="rounded-circle" width="35" alt="profile">
+            <h5 class="mb-0 fw-bold">Executive Analytics</h5>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small d-none d-md-block">Welcome, <strong>{{ request.user.username|capfirst }}</strong></span>
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle shadow-sm" width="40">
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger px-3">Logout</a>
             </div>
         </header>
 
         <div class="container-fluid p-4">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="fw-bold">🚀 Tracking Progress</h2>
-                <a href="{% url 'todo_add' %}" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill">+ New Task</a>
-            </div>
-
-            <div class="card mb-4 border-0 shadow-sm">
+            <div class="card mb-4">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="card-title fw-bold">Task Completion Rate</h5>
-                        <span class="fw-bold text-primary">{{ percentage|floatformat:0 }}%</span>
+                        <h6 class="fw-bold text-muted mb-0">SYSTEM COMPLETION RATE</h6>
+                        <span class="badge bg-primary rounded-pill">{{ percentage|floatformat:1 }}%</span>
                     </div>
-                    <div class="progress mb-3">
-                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" 
-                             style="width: {{ percentage }}%;">
-                        </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: {{ percentage }}%"></div>
                     </div>
-                    <p class="text-muted small mb-0">Total: <strong>{{ total }}</strong> | Completed: <span class="text-success">{{ completed }}</span> | Pending: <span class="text-warning">{{ total|add:"-completed" }}</span></p>
                 </div>
             </div>
 
-            <div class="row">
+            <div class="row mb-4">
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Status Distribution</h6>
+                        <div class="chart-container"><canvas id="statusChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Priority Breakdown</h6>
+                        <div class="chart-container"><canvas id="priorityChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
                 {% for freq, tasks in stats.items %}
                 <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card h-100 border-0 shadow-sm card-stats">
-                        <div class="card-body">
-                            <h6 class="text-uppercase text-muted small fw-bold mb-3">{{ freq }}</h6>
-                            <div class="d-flex align-items-center mb-3">
-                                <h2 class="mb-0 fw-bold">{{ tasks.count }}</h2>
-                                <span class="ms-2 badge bg-primary-subtle text-primary">Tasks</span>
+                    <div class="card h-100 shadow-sm card-stats p-3">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-2">{{ freq }}</h6>
+                        <h2 class="fw-bold">{{ tasks.count }} <span class="fs-6 text-muted fw-normal">Tasks</span></h2>
+                        <hr class="opacity-10">
+                        {% for task in tasks|slice:":2" %}
+                            <div class="d-flex justify-content-between align-items-center small mb-1">
+                                <span class="text-truncate" style="max-width: 120px;">{{ task.title }}</span>
+                                <span class="badge {% if task.priority == 'urgent' %}bg-danger{% elif task.priority == 'high' %}bg-warning{% else %}bg-secondary{% endif %}">{{ task.priority }}</span>
                             </div>
-                            <ul class="list-unstyled mb-0">
-                                {% for task in tasks|slice:":3" %}
-                                <li class="small text-truncate py-1 border-top mt-1">
-                                    {% if task.is_completed %}
-                                        <i class="fas fa-check-circle text-success me-1"></i>
-                                    {% else %}
-                                        <i class="far fa-circle text-muted me-1"></i>
-                                    {% endif %} 
-                                    {{ task.title }}
-                                </li>
-                                {% empty %}
-                                <li class="text-muted small">No active tasks</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
 
-            <div class="card border-0 shadow-sm mt-2">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-hourglass-half me-2 text-warning"></i>Recently Pending</h5>
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-0 py-4 px-4">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-stream me-2 text-primary"></i>Pending Tasks Tracking</h5>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
+                        <thead class="table-light text-muted small">
                             <tr>
-                                <th class="ps-4">Task Name</th>
+                                <th class="ps-4">Task Detail</th>
+                                <th>Creator</th>
+                                <th>Assignee</th>
                                 <th>Frequency</th>
-                                <th>Status</th>
-                                <th class="text-end pe-4">Actions</th>
+                                <th class="text-end pe-4">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -160,11 +111,15 @@
                                 {% for task in tasks %}
                                     {% if not task.is_completed %}
                                     <tr>
-                                        <td class="ps-4 fw-medium">{{ task.title }}</td>
-                                        <td><span class="badge rounded-pill bg-light text-dark border">{{ task.get_frequency_display }}</span></td>
-                                        <td><span class="badge bg-warning-subtle text-warning px-3">Pending</span></td>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">{{ task.title }}</div>
+                                            <small class="text-muted">{{ task.created_at|date:"M d, Y" }}</small>
+                                        </td>
+                                        <td><span class="user-badge badge-provider">{{ task.created_by.username|capfirst }}</span></td>
+                                        <td><span class="user-badge badge-taker">{{ task.assigned_to.username|default:"N/A"|capfirst }}</span></td>
+                                        <td>{{ task.get_frequency_display }}</td>
                                         <td class="text-end pe-4">
-                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-outline-primary rounded-circle"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-light border">Edit</a>
                                         </td>
                                     </tr>
                                     {% endif %}
@@ -175,23 +130,664 @@
                 </div>
             </div>
         </div>
-
-        <footer>
-            <div class="text-muted small">
-                &copy; 2026 <strong>AgroPTE Tracker</strong>. All rights reserved.
-            </div>
-        </footer>
-
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Status Chart (Doughnut)
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending'],
+                datasets: [{
+                    data: [{{ completed_count }}, {{ pending_count }}],
+                    backgroundColor: ['#10b981', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                cutout: '70%',
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // Priority Chart (Bar)
+        new Chart(document.getElementById('priorityChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Urgent'],
+                datasets: [{
+                    label: 'Tasks',
+                    data: [
+                        {{ priority_data.low }}, 
+                        {{ priority_data.medium }}, 
+                        {{ priority_data.high }}, 
+                        {{ priority_data.urgent }}
+                    ],
+                    backgroundColor: ['#3b82f6', '#fbbf24', '#f97316', '#ef4444'],
+                    borderRadius: 8
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                scales: { 
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Tracker | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --sidebar-width: 260px; --primary-color: #4e54c8; --bg-light: #f4f7fe; }
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; display: flex; }
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; background: #1a202c; color: white; z-index: 1000; }
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; }
+        .main-content { margin-left: var(--sidebar-width); width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+        .header { background: white; height: 75px; display: flex; align-items: center; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); sticky; top: 0; z-index: 999; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-stats { border-left: 6px solid var(--primary-color); }
+        .user-badge { font-size: 0.7rem; padding: 5px 10px; border-radius: 8px; font-weight: 600; }
+        .badge-provider { background: #e0e7ff; color: #4338ca; }
+        .badge-taker { background: #fffbeb; color: #92400e; }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="p-4"><h4 class="fw-bold mb-0">Goal Tracker</h4></div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="#"><i class="fas fa-chart-pie me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold">Executive Analytics</h5>
+            <div class="d-flex align-items-center gap-3">
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle shadow-sm" width="40">
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger px-3">Logout</a>
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-muted mb-0">SYSTEM COMPLETION RATE</h6>
+                        <span class="badge bg-primary rounded-pill">{{ percentage|floatformat:1 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: {{ percentage }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Status Distribution</h6>
+                        <div class="chart-container"><canvas id="statusChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Priority Breakdown</h6>
+                        <div class="chart-container"><canvas id="priorityChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                {% for freq, tasks in stats.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm card-stats p-3">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-2">{{ freq }}</h6>
+                        <h2 class="fw-bold">{{ tasks.count }} <span class="fs-6 text-muted fw-normal">Tasks</span></h2>
+                        <hr class="opacity-10">
+                        {% for task in tasks|slice:":2" %}
+                            <div class="d-flex justify-content-between align-items-center small mb-1">
+                                <span class="text-truncate" style="max-width: 120px;">{{ task.title }}</span>
+                                <span class="badge {% if task.priority == 'urgent' %}bg-danger{% elif task.priority == 'high' %}bg-warning{% else %}bg-secondary{% endif %}">{{ task.priority }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-0 py-4 px-4">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-stream me-2 text-primary"></i>Pending Tasks Tracking</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-muted small">
+                            <tr>
+                                <th class="ps-4">Task Detail</th>
+                                <th>Creator</th>
+                                <th>Assignee</th>
+                                <th>Frequency</th>
+                                <th class="text-end pe-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for freq, tasks in stats.items %}
+                                {% for task in tasks %}
+                                    {% if not task.is_completed %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">{{ task.title }}</div>
+                                            <small class="text-muted">{{ task.created_at|date:"M d, Y" }}</small>
+                                        </td>
+                                        <td><span class="user-badge badge-provider">{{ task.created_by.username|capfirst }}</span></td>
+                                        <td><span class="user-badge badge-taker">{{ task.assigned_to.username|default:"N/A"|capfirst }}</span></td>
+                                        <td>{{ task.get_frequency_display }}</td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-light border">Edit</a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Status Chart
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending'],
+                datasets: [{
+                    data: [{{ completed_count }}, {{ pending_count }}],
+                    backgroundColor: ['#10b981', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: { maintainAspectRatio: false, cutout: '70%' }
+        });
+
+        // Priority Chart
+        new Chart(document.getElementById('priorityChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Urgent'],
+                datasets: [{
+                    label: 'Tasks',
+                    data: [
+                        {{ priority_data.low }}, 
+                        {{ priority_data.medium }}, 
+                        {{ priority_data.high }}, 
+                        {{ priority_data.urgent }}
+                    ],
+                    backgroundColor: ['#3b82f6', '#fbbf24', '#f97316', '#ef4444'],
+                    borderRadius: 8
+                }]
+            },
+            options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+</body>
+</html>
+ {% endcomment %}
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Tracker | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4e54c8;
+            --bg-light: #f4f7fe;
+            --text-dark: #2d3748;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; display: flex; }
+
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; background: #1a202c; color: white; z-index: 1000; }
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; box-shadow: 0 4px 12px rgba(78, 84, 200, 0.3); }
+
+        .main-content { margin-left: var(--sidebar-width); width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+        .header { background: white; height: 75px; display: flex; align-items: center; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 999; }
+        
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-stats { border-left: 6px solid var(--primary-color); }
+        .user-badge { font-size: 0.7rem; padding: 5px 10px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; }
+        .badge-provider { background: #e0e7ff; color: #4338ca; }
+        .badge-taker { background: #fffbeb; color: #92400e; }
+        
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .filter-pill { border: 1px solid #e2e8f0; border-radius: 20px; padding: 5px 15px; font-size: 0.85rem; cursor: pointer; transition: 0.3s; }
+        .filter-pill:hover, .filter-pill.active { background: var(--primary-color); color: white; }
+
+        .table thead th {
+            background-color: var(--bg-light);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            color: #718096;
+            border: none;
+            padding: 15px 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="p-4"><h4 class="fw-bold mb-0">Goal Tracker</h4></div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="#"><i class="fas fa-chart-pie me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold">Executive Analytics</h5>
+            <div class="d-flex align-items-center gap-3">
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle shadow-sm" width="40">
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger px-3">Logout</a>
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card p-3">
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="text-muted small fw-bold me-2">Quick Filter:</span>
+                            <div class="filter-pill active">All Time</div>
+                            <div class="filter-pill">This Week</div>
+                            <div class="filter-pill">High Priority</div>
+                            <div class="filter-pill">My Tasks</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-muted mb-0">TOTAL SYSTEM EFFICIENCY</h6>
+                        <span class="badge bg-primary rounded-pill">{{ percentage|floatformat:1 }}% Done</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: {{ percentage }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Task Status Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Priority Breakdown</h6>
+                        <div class="chart-container">
+                            <canvas id="priorityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                {% for freq, tasks in stats.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm card-stats p-3">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-2">{{ freq }}</h6>
+                        <h2 class="fw-bold">{{ tasks.count }} <span class="fs-6 text-muted fw-normal">Tasks</span></h2>
+                        <hr class="opacity-10">
+                        {% for task in tasks|slice:":2" %}
+                            <div class="d-flex justify-content-between align-items-center small mb-1">
+                                <span class="text-truncate" style="max-width: 120px;">{{ task.title }}</span>
+                                <span class="badge {% if task.priority == 'urgent' %}bg-danger{% elif task.priority == 'high' %}bg-warning{% else %}bg-secondary{% endif %}">{{ task.priority }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-0 py-4 px-4">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-stream me-2 text-primary"></i>Active Assignment Tracking</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Task Detail</th>
+                                <th>Provider</th>
+                                <th>Assignee</th>
+                                <th>Frequency</th>
+                                <th class="text-end pe-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for freq, tasks in stats.items %}
+                                {% for task in tasks %}
+                                    {% if not task.is_completed %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">{{ task.title }}</div>
+                                            <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{{ task.created_at|date:"D, d M" }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="user-badge badge-provider">
+                                                <i class="fas fa-user-tie me-1"></i>{{ task.created_by.username|default:"Admin"|capfirst }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="user-badge badge-taker">
+                                                <i class="fas fa-user-circle me-1"></i>{{ task.assigned_to.username|capfirst }}
+                                            </span>
+                                        </td>
+                                        <td><span class="badge rounded-pill bg-white text-dark border px-3">{{ task.get_frequency_display }}</span></td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-light border fw-bold px-3">Edit</a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% empty %}
+                                    {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="mt-auto text-center p-4 text-muted small">
+            &copy; 2026 Goal Tracker Tracker • Unified Task Management
+        </footer>
+    </div>
+
+    <script>
+        // Graph 1: Doughnut Chart for Status
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending'],
+                datasets: [{
+                    data: [{{ completed_count|default:0 }}, {{ pending_count|default:0 }}],
+                    backgroundColor: ['#10b981', '#f59e0b'],
+                    borderWidth: 0,
+                    hoverOffset: 15
+                }]
+            },
+            options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // Graph 2: Bar Chart for Priorities
+        new Chart(document.getElementById('priorityChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Urgent'],
+                datasets: [{
+                    label: 'Tasks Count',
+                    data: [
+                        {{ priority_data.low|default:0 }}, 
+                        {{ priority_data.medium|default:0 }}, 
+                        {{ priority_data.high|default:0 }}, 
+                        {{ priority_data.urgent|default:0 }}
+                    ],
+                    backgroundColor: ['#3b82f6', '#fbbf24', '#f97316', '#ef4444'],
+                    borderRadius: 8
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                scales: { 
+                    y: { beginAtZero: true, grid: { display: false } }, 
+                    x: { grid: { display: false } } 
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+</body>
+</html>
+ {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Tracker | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4e54c8;
+            --bg-light: #f4f7fe;
+            --text-dark: #2d3748;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; display: flex; }
+
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; background: #1a202c; color: white; z-index: 1000; }
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; box-shadow: 0 4px 12px rgba(78, 84, 200, 0.3); }
+
+        .main-content { margin-left: var(--sidebar-width); width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+        .header { background: white; height: 75px; display: flex; align-items: center; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 999; }
+        
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-stats { border-left: 6px solid var(--primary-color); }
+        .user-badge { font-size: 0.7rem; padding: 5px 10px; border-radius: 8px; font-weight: 600; }
+        .badge-provider { background: #e0e7ff; color: #4338ca; }
+        .badge-taker { background: #fffbeb; color: #92400e; }
+        
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .filter-pill { border: 1px solid #e2e8f0; border-radius: 20px; padding: 5px 15px; font-size: 0.85rem; cursor: pointer; transition: 0.3s; }
+        .filter-pill:hover, .filter-pill.active { background: var(--primary-color); color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="p-4"><h4 class="fw-bold mb-0">Goal Tracker</h4></div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="#"><i class="fas fa-chart-pie me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold">Executive Analytics</h5>
+            <div class="d-flex align-items-center gap-3">
+                <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4e54c8&color=fff" class="rounded-circle shadow-sm" width="40">
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger px-3">Logout</a>
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card p-3">
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="text-muted small fw-bold me-2">Quick Filter:</span>
+                            <div class="filter-pill active">All Time</div>
+                            <div class="filter-pill">This Week</div>
+                            <div class="filter-pill">High Priority</div>
+                            <div class="filter-pill">My Tasks</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-muted mb-0">TOTAL SYSTEM EFFICIENCY</h6>
+                        <span class="badge bg-primary rounded-pill">{{ percentage|floatformat:1 }}% Done</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: {{ percentage }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Task Status Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card p-4 h-100">
+                        <h6 class="fw-bold mb-4 text-center">Priority Breakdown</h6>
+                        <div class="chart-container">
+                            <canvas id="priorityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                {% for freq, tasks in stats.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm card-stats p-3">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-2">{{ freq }}</h6>
+                        <h2 class="fw-bold">{{ tasks.count }} <span class="fs-6 text-muted fw-normal">Tasks</span></h2>
+                        <hr class="opacity-10">
+                        {% for task in tasks|slice:":2" %}
+                            <div class="d-flex justify-content-between align-items-center small mb-1">
+                                <span class="text-truncate" style="max-width: 120px;">{{ task.title }}</span>
+                                <span class="badge {% if task.priority == 'high' %}bg-danger{% else %}bg-secondary{% endif %}">{{ task.priority }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+
+        <footer class="mt-auto text-center p-4 text-muted small">
+            &copy; 2026 Goal Tracker Tracker • Unified Task Management
+        </footer>
+    </div>
+
+    <script>
+        // Graph 1: Doughnut Chart for Status
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending'],
+                datasets: [{
+                    data: [{{ completed_count }}, {{ pending_count }}],
+                    backgroundColor: ['#10b981', '#f59e0b'],
+                    borderWidth: 0,
+                    hoverOffset: 15
+                }]
+            },
+            options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // Graph 2: Bar Chart for Priorities
+        new Chart(document.getElementById('priorityChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Urgent'],
+                datasets: [{
+                    label: 'Tasks Count',
+                    data: [{{ priority_data.low }}, {{ priority_data.medium }}, {{ priority_data.high }}, {{ priority_data.urgent }}],
+                    backgroundColor: ['#3b82f6', '#fbbf24', '#f97316', '#ef4444'],
+                    borderRadius: 8
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
 </body>
 </html> {% endcomment %}
 
 
 
+
+
  
-<!DOCTYPE html>
+
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -355,12 +951,12 @@
 
     <div class="sidebar">
         <div class="sidebar-brand">
-            <h4 class="fw-bold mb-0"><i class="fas fa-layer-group me-2 text-primary"></i>AgroPTE</h4>
+            <h4 class="fw-bold mb-0"><i class="fas fa-layer-group me-2 text-primary"></i>Goal Tracker</h4>
         </div>
         <nav class="nav flex-column mt-3">
             <a class="nav-link active" href="{% url 'todo_dashboard' %}"><i class="fas fa-grid-2 me-2"></i> Dashboard</a>
             <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
-            <a class="nav-link" href="{% url 'todo_add' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+            <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
             <div class="px-4 py-3"><hr class="border-secondary opacity-25 m-0"></div>
             <a class="nav-link" href="#"><i class="fas fa-sliders-h me-2"></i> Settings</a>
         </nav>
@@ -389,7 +985,7 @@
                     <p class="text-muted small mb-0">Monitor your team's real-time productivity</p>
                 </div>
                 <div class="col-auto">
-                    <a href="{% url 'todo_add' %}" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill fw-bold">
+                    <a href="{% url 'todo_create' %}" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill fw-bold">
                         <i class="fas fa-plus me-2"></i>Create Task
                     </a>
                 </div>
@@ -489,7 +1085,7 @@
 
         <footer>
             <div class="small">
-                &copy; 2026 <strong>AgroPTE Tracker</strong> • Made for Efficiency
+                &copy; 2026 <strong>Goal Tracker Tracker</strong> • Made for Efficiency
             </div>
         </footer>
     </div>
@@ -497,6 +1093,215 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+  {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} 
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Tracker | Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --primary-color: #4361ee;
+            --bg-light: #f8f9fa;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: #212529;
+            color: white;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 5px 15px;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styling */
+        .header {
+            background: white;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .card-stats { border-left: 5px solid var(--primary-color); border-radius: 12px; }
+        .progress { height: 12px; border-radius: 10px; }
+        footer { margin-top: auto; background: white; padding: 20px; text-align: center; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="p-4">
+            <h4 class="fw-bold"><i class="fas fa-check-double me-2 text-primary"></i>Goal Tracker</h4>
+        </div>
+        <nav class="nav flex-column mt-2">
+            <a class="nav-link active" href="{% url 'todo_dashboard' %}"><i class="fas fa-home me-2"></i> Dashboard</a>
+            <a class="nav-link" href="{% url 'todo_list' %}"><i class="fas fa-list me-2"></i> All Tasks</a>
+            <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-circle me-2"></i> Add New</a>
+            <hr class="mx-3 border-secondary">
+            <a class="nav-link" href="#"><i class="fas fa-cog me-2"></i> Settings</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        
+        <header class="header justify-content-between">
+            <h5 class="mb-0 fw-bold text-dark">Dashboard Overview</h5>
+            <div class="d-flex align-items-center">
+                <span class="me-3 d-none d-md-inline text-muted">Welcome, Admin</span>
+                <img src="https://ui-avatars.com/api/?name=Admin&background=4361ee&color=fff" class="rounded-circle" width="35" alt="profile">
+            </div>
+        </header>
+
+        <div class="container-fluid p-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">🚀 Tracking Progress</h2>
+                <a href="{% url 'todo_create' %}" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill">+ New Task</a>
+            </div>
+
+            <div class="card mb-4 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title fw-bold">Task Completion Rate</h5>
+                        <span class="fw-bold text-primary">{{ percentage|floatformat:0 }}%</span>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" 
+                             style="width: {{ percentage }}%;">
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Total: <strong>{{ total }}</strong> | Completed: <span class="text-success">{{ completed }}</span> | Pending: <span class="text-warning">{{ total|add:"-completed" }}</span></p>
+                </div>
+            </div>
+
+            <div class="row">
+                {% for freq, tasks in stats.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card h-100 border-0 shadow-sm card-stats">
+                        <div class="card-body">
+                            <h6 class="text-uppercase text-muted small fw-bold mb-3">{{ freq }}</h6>
+                            <div class="d-flex align-items-center mb-3">
+                                <h2 class="mb-0 fw-bold">{{ tasks.count }}</h2>
+                                <span class="ms-2 badge bg-primary-subtle text-primary">Tasks</span>
+                            </div>
+                            <ul class="list-unstyled mb-0">
+                                {% for task in tasks|slice:":3" %}
+                                <li class="small text-truncate py-1 border-top mt-1">
+                                    {% if task.is_completed %}
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                    {% else %}
+                                        <i class="far fa-circle text-muted me-1"></i>
+                                    {% endif %} 
+                                    {{ task.title }}
+                                </li>
+                                {% empty %}
+                                <li class="text-muted small">No active tasks</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card border-0 shadow-sm mt-2">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-hourglass-half me-2 text-warning"></i>Recently Pending</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Task Name</th>
+                                <th>Frequency</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for freq, tasks in stats.items %}
+                                {% for task in tasks %}
+                                    {% if not task.is_completed %}
+                                    <tr>
+                                        <td class="ps-4 fw-medium">{{ task.title }}</td>
+                                        <td><span class="badge rounded-pill bg-light text-dark border">{{ task.get_frequency_display }}</span></td>
+                                        <td><span class="badge bg-warning-subtle text-warning px-3">Pending</span></td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' task.id %}" class="btn btn-sm btn-outline-primary rounded-circle"><i class="fas fa-edit"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="text-muted small">
+                &copy; 2026 <strong>Goal Tracker Tracker</strong>. All rights reserved.
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>   {% endcomment %}
+
+
+
+
+
+
+
 
 
 
@@ -506,7 +1311,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AgroPTE | Admin Dashboard</title>
+    <title>Goal Tracker | Admin Dashboard</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -563,7 +1368,7 @@
 
 <body>
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-brand text-center">AGRO PTE</div>
+        <div class="sidebar-brand text-center">Goal Tracker</div>
         <div class="mt-4">
             <a href="#" class="active"><i class="fas fa-home"></i> Dashboard</a>
             <a href="{% url 'todo_list' %}"><i class="fas fa-check-double"></i> My Tasks</a>
