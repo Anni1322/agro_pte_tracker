@@ -1,4 +1,430 @@
-<!DOCTYPE html>
+ {% extends 'base.html' %}
+
+{% block title %}All Tasks | Goal Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .status-pill { padding: 5px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem; }
+    .status-completed { background: #dcfce7; color: #15803d; }
+    .status-pending { background: #fef9c3; color: #a16207; }
+    .pagination .page-link { border-radius: 8px; margin: 0 3px; border: none; color: #1a202c; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .pagination .active .page-link { background: var(--primary-color); color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="card p-3 border-0">
+        <form method="GET" class="row g-2">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control" placeholder="Search..." value="{{ search_query }}">
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="priority" class="form-select">
+                    <option value="">All Priority</option>
+                    <option value="urgent" {% if priority_filter == 'urgent' %}selected{% endif %}>Urgent</option>
+                    <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i></button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card p-4 text-center">
+                <h6 class="fw-bold text-uppercase small text-muted mb-4">Task Distribution</h6>
+                <div style="height: 220px;"><canvas id="taskChart"></canvas></div>
+                <div class="mt-4 d-flex justify-content-around">
+                    <div><div class="fw-bold text-success h4 mb-0">{{ complete_count }}</div><small class="text-muted">Done</small></div>
+                    <div><div class="fw-bold text-warning h4 mb-0">{{ pending_count }}</div><small class="text-muted">Pending</small></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Task Info</th>
+                                <th>Category</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for todo in todos %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold">{{ todo.title }}</div>
+                                    <div class="text-muted small">Due: {{ todo.due_date|date:"M d, Y"|default:"No Date" }}</div>
+                                </td>
+                                <td>{{ todo.category|default:"-" }}</td>
+                                <td>
+                                    <span class="badge {% if todo.priority == 'urgent' %}bg-danger{% else %}bg-info{% endif %}">
+                                        {{ todo.get_priority_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if todo.is_completed %}
+                                        <span class="status-pill status-completed">Completed</span>
+                                    {% else %}
+                                        <span class="status-pill status-pending">In Progress</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{% url 'todo_edit' todo.id %}" class="btn btn-sm btn-light border"><i class="fas fa-edit"></i></a>
+                                    <a href="{% url 'todo_delete' todo.id %}" class="btn btn-sm btn-light border text-danger"><i class="fas fa-trash"></i></a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-4">No tasks found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('taskChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'Pending'],
+            datasets: [{
+                data: [{{ complete_count|default:0 }}, {{ pending_count|default:0 }}],
+                backgroundColor: ['#10b981', '#f59e0b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '80%'
+        }
+    });
+</script>
+{% endblock %}
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Tasks | Goal Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { 
+            --sidebar-width: 260px; 
+            --primary-color: #4e54c8; 
+            --bg-light: #f4f7fe; 
+            --transition-speed: 0.3s;
+        }
+
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+        /* Sidebar Base Styles */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            height: 100vh; 
+            position: fixed; 
+            background: #1a202c; 
+            color: white; 
+            z-index: 1050; 
+            transition: transform var(--transition-speed) ease;
+            left: 0;
+            top: 0;
+        }
+
+        .sidebar .nav-link { color: #a0aec0; padding: 12px 20px; border-radius: 12px; margin: 4px 15px; text-decoration: none; display: block; transition: 0.2s; }
+        .sidebar .nav-link:hover { background: rgba(255,255,255,0.05); color: white; }
+        .sidebar .nav-link.active { background: var(--primary-color); color: white; }
+
+        /* Main Content Adjustment */
+        .main-content { 
+            margin-left: var(--sidebar-width); 
+            min-height: 100vh; 
+            padding-bottom: 50px; 
+            transition: margin-left var(--transition-speed) ease;
+        }
+
+        /* Toggled States */
+        body.sidebar-toggled .sidebar { transform: translateX(-100%); }
+        body.sidebar-toggled .main-content { margin-left: 0; }
+
+        .header { 
+            background: white; 
+            height: 75px; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 30px; 
+            border-bottom: 1px solid #eee; 
+            position: sticky; 
+            top: 0; 
+            z-index: 999; 
+        }
+
+        #sidebarToggle {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            margin-right: 20px;
+            cursor: pointer;
+            color: #4a5568;
+        }
+
+        /* Mobile Responsive adjustments */
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+            
+            body.sidebar-toggled .sidebar { transform: translateX(0); }
+            body.sidebar-toggled .main-content { margin-left: 0; }
+            
+            /* Overlay when sidebar is open on mobile */
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1040;
+            }
+            body.sidebar-toggled .sidebar-overlay { display: block; }
+        }
+
+        /* Original Components */
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .status-pill { padding: 5px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem; }
+        .status-completed { background: #dcfce7; color: #15803d; }
+        .status-pending { background: #fef9c3; color: #a16207; }
+        .pagination .page-link { border-radius: 8px; margin: 0 3px; border: none; color: #1a202c; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .pagination .active .page-link { background: var(--primary-color); color: white; }
+    </style>
+</head>
+<body> {% endcomment %}
+
+ 
+
+    <div class="main-content">
+        {% comment %} <header class="header">
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
+            <div class="sidebar" id="sidebar">
+                <div class="p-4 d-flex justify-content-between align-items-center">
+                    <h4 class="fw-bold mb-0"><i class="fas fa-layer-group me-2"></i>Goal Tracker</h4>
+                    <button class="btn btn-link text-white d-lg-none" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
+                </div>
+                <nav class="nav flex-column mt-3">
+                    <a class="nav-link" href="{% url 'todo_dashboard' %}"><i class="fas fa-th-large me-2"></i> Dashboard</a>
+                    <a class="nav-link active" href="{% url 'todo_list' %}"><i class="fas fa-tasks me-2"></i> All Tasks</a>
+                    <a class="nav-link" href="{% url 'todo_create' %}"><i class="fas fa-plus-square me-2"></i> Add New</a>
+                </nav>
+            </div>
+            <button id="sidebarToggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <h5 class="mb-0 fw-bold">Task Management Explorer</h5>
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'logout' %}">Logout</a>
+            </div>
+        </header> {% endcomment %}
+
+
+        
+        <div class="container-fluid p-4">
+            <div class="card p-3 border-0">
+                <form method="GET" class="row g-2">
+                    <div class="col-md-3">
+                        <input type="text" name="search" class="form-control" placeholder="Search by title..." value="{{ search_query }}">
+                    </div>
+                    <div class="col-md-2">
+                        <select name="status" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="priority" class="form-select">
+                            <option value="">All Priority</option>
+                            <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+                            <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+                            <option value="urgent" {% if priority_filter == 'urgent' %}selected{% endif %}>Urgent</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="category" class="form-control" placeholder="Category..." value="{{ category_filter }}">
+                    </div>
+                    <div class="col-md-2">
+                        <div class="input-group">
+                            <input type="date" name="start_date" class="form-control px-1" title="Start Date" value="{{ start_date }}">
+                            <input type="date" name="end_date" class="form-control px-1" title="End Date" value="{{ end_date }}">
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i></button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card p-4 text-center">
+                        <h6 class="fw-bold text-uppercase small text-muted mb-4">Task Completion Distribution</h6>
+                        <div style="height: 220px;"><canvas id="taskChart"></canvas></div>
+                        <div class="mt-4 d-flex justify-content-around">
+                            <div><div class="fw-bold text-success h4 mb-0">{{ complete_count }}</div><small class="text-muted">Done</small></div>
+                            <div><div class="fw-bold text-warning h4 mb-0">{{ pending_count }}</div><small class="text-muted">Pending</small></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Task Info</th>
+                                        <th>Category</th> 
+                                        {% if request.user.username == 'admin' or request.user.is_superuser %}
+                                        <th>Assignee</th>
+                                        {% endif %}
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-4">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for todo in todos %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">{{ todo.title }}</div>
+                                            <div class="text-muted small">Due: {{ todo.due_date|date:"M d, Y"|default:"No Date" }}</div>
+                                        </td>
+                                        <td>{{ todo.category|default:"-" }}</td>
+                                        
+                                        {% if request.user.username == 'admin' or request.user.is_superuser %}
+                                        <td><span class="small text-muted">👤 {{ todo.assigned_to.username }}</span></td>
+                                        {% endif %}
+
+                                        <td>
+                                            <span class="badge {% if todo.priority == 'urgent' %}bg-danger{% elif todo.priority == 'high' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                                                {{ todo.get_priority_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if todo.is_completed %}
+                                                <span class="status-pill status-completed">Completed</span>
+                                            {% else %}
+                                                <span class="status-pill status-pending">In Progress</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'todo_edit' todo.id %}" class="btn btn-sm btn-light border"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'todo_delete' todo.id %}" class="btn btn-sm btn-light border text-danger"><i class="fas fa-trash"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="card-footer bg-white border-0 py-4">
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    {% if todos.has_previous %}
+                                        <li class="page-item"><a class="page-link" href="?page=1&search={{ search_query }}&status={{ status_filter }}&priority={{ priority_filter }}&category={{ category_filter }}&start_date={{ start_date }}&end_date={{ end_date }}">First</a></li>
+                                        <li class="page-item"><a class="page-link" href="?page={{ todos.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&priority={{ priority_filter }}&category={{ category_filter }}&start_date={{ start_date }}&end_date={{ end_date }}">Prev</a></li>
+                                    {% endif %}
+                                    
+                                    <li class="page-item active"><span class="page-link">{{ todos.number }}</span></li>
+
+                                    {% if todos.has_next %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ todos.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&priority={{ priority_filter }}&category={{ category_filter }}&start_date={{ start_date }}&end_date={{ end_date }}">Next</a></li>
+                                        <li class="page-item"><a class="page-link" href="?page={{ todos.paginator.num_pages }}&search={{ search_query }}&status={{ status_filter }}&priority={{ priority_filter }}&category={{ category_filter }}&start_date={{ start_date }}&end_date={{ end_date }}">Last</a></li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sidebar Toggle Logic
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-toggled');
+        }
+
+        // Close sidebar when clicking overlay (mobile)
+        document.getElementById('sidebarOverlay').onclick = function() {
+            document.body.classList.remove('sidebar-toggled');
+        };
+
+        // Chart.js Initialization
+        const ctx = document.getElementById('taskChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending'],
+                datasets: [{
+                    data: [{{ complete_count|default:0 }}, {{ pending_count|default:0 }}],
+                    backgroundColor: ['#10b981', '#f59e0b'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                cutout: '80%'
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -190,7 +616,7 @@
 
 
 
-
+ {% endcomment %}
 
 
 

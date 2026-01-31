@@ -1,0 +1,49 @@
+  <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-leaf text-success"></i>
+        <span>Agroexpence</span>
+      </div>
+
+      <div class="sidebar-nav">
+        <small class="sidebar-heading">Main</small>
+        <a href="{% url 'dashboard_view' %}" class="active"
+          ><i class="fas fa-th-large"></i> Dashboard</a
+        >
+
+        <small class="sidebar-heading">Personal</small>
+        <a href="/todo/"><i class="fas fa-check-double"></i> To-Do List</a>
+
+        <small class="sidebar-heading">Finance</small>
+        <div class="nav-item">
+          <a href="{% url 'form_view' %}"
+            ><i class="fas fa-arrow-trend-down"></i> Expenses</a
+          >
+          <div class="ms-4 mt-1 border-start ps-3">
+            <a href="{% url 'addexpence_view' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-plus-circle"></i> Add New</a
+            >
+            <a href="{% url 'chart_view' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-chart-line"></i> Analytics</a
+            >  
+            <a href="{% url 'filter_view' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-filter"></i> Filters</a
+            >
+            <a href="{% url 'upload-form' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-camera"></i> OCR Scan</a
+            >
+          </div>
+        </div>
+        <a href="/accounts/"><i class="fas fa-university"></i> Accounts</a>
+
+        <small class="sidebar-heading">Management</small>
+        <a href="/employee/"><i class="fas fa-users"></i> Employees</a>
+        <a href="/project/"><i class="fas fa-diagram-project"></i> Projects</a>
+        <a href="/tasks/"><i class="fas fa-list-check"></i> Tasks</a>
+      </div>
+
+      <div class="logout-section">
+        <a href="{% url 'logout' %}" class="logout-btn">
+          <i class="fas fa-right-from-bracket"></i> Logout
+        </a>
+      </div>
+    </nav>

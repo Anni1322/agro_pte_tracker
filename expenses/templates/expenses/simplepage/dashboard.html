@@ -1,3 +1,718 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Dashboard | Agroexpence{% endblock %}
+{% block page_title %}Financial Overview{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Unique Dashboard Styling */
+    .stat-card {
+        background: white; border: none; border-radius: 16px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        padding: 24px; height: 100%; transition: transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-title { font-size: 0.85rem; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 10px; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #111827; }
+
+    .chart-container {
+        background: white; padding: 24px; border-radius: 20px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        margin-top: 20px; height: 100%;
+    }
+
+    .transaction-list { max-height: 400px; overflow-y: auto; }
+    .transaction-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+
+    .chart-filter-btn {
+        font-size: 0.75rem; padding: 4px 12px; border-radius: 20px;
+        border: 1px solid #e5e7eb; background: white; color: #6b7280; margin-left: 5px;
+    }
+    .chart-filter-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold mb-1">Hello, {{ request.user.username|capfirst }}!</h2>
+            <p class="text-muted">Here is your personal financial summary based on live data.</p>
+        </div>
+        <div class="d-none d-md-flex align-items-center gap-3 bg-white p-2 px-3 rounded-pill shadow-sm">
+            <i class="fas fa-user-circle fa-2x text-primary"></i>
+            <span class="fw-bold small">{{ request.user.email }}</span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-title">Total Expenses</div>
+                <div class="stat-value text-primary" id="totalExpense">₹ 0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-title">Monthly Avg.</div>
+                <div class="stat-value text-success" id="monthlyExpense">₹ 0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-title">This Year (2026)</div>
+                <div class="stat-value text-info" id="yearExpense">₹ 0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-title">Primary Categories</div>
+                <div class="stat-value fs-6 text-warning" id="categoryList">---</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="chart-container">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0">Spending Trends</h5>
+                    <div>
+                        <button class="chart-filter-btn active" onclick="updateChartMode('month')">Monthly</button>
+                        <button class="chart-filter-btn" onclick="updateChartMode('year')">Yearly</button>
+                    </div>
+                </div>
+                <div style="height: 350px;">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <h5 class="mb-4 fw-bold">Recent Ledger</h5>
+                <div class="transaction-list" id="transactionList">
+                    <p class="text-muted small text-center py-5">No transactions found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let expenseChart;
+    let chartMode = "month";
+    let rawData = [];
+
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchExpenses();
+    });
+
+    function fetchExpenses() {
+        fetch("{% url 'getexpenses' %}")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.expenses && data.expenses.length > 0) {
+                    rawData = data.expenses;
+                    updateUI();
+                }
+            })
+            .catch((err) => console.error("API Error:", err));
+    }
+
+    function updateUI() {
+        const total = rawData.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+        document.getElementById("totalExpense").textContent = "₹ " + total.toLocaleString("en-IN");
+
+        const uniqueMonths = [...new Set(rawData.map((e) => e.date.substring(0, 7)))];
+        const avg = total / (uniqueMonths.length || 1);
+        document.getElementById("monthlyExpense").textContent = "₹ " + Math.round(avg).toLocaleString("en-IN");
+
+        const currentYear = new Date().getFullYear().toString();
+        const yearlyTotal = rawData
+            .filter((e) => e.date.startsWith(currentYear))
+            .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+        document.getElementById("yearExpense").textContent = "₹ " + yearlyTotal.toLocaleString("en-IN");
+
+        const categories = [...new Set(rawData.map((e) => e.category))];
+        document.getElementById("categoryList").textContent = categories.slice(0, 3).join(", ") + (categories.length > 3 ? "..." : "");
+
+        const listContainer = document.getElementById("transactionList");
+        listContainer.innerHTML = rawData
+            .slice(-10)
+            .reverse()
+            .map((e) => `
+                <div class="transaction-item">
+                    <div>
+                        <div class="fw-bold small text-uppercase">${e.category}</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">${e.date}</div>
+                    </div>
+                    <div class="fw-bold text-dark">₹${parseFloat(e.amount).toLocaleString("en-IN")}</div>
+                </div>
+            `).join("");
+
+        updateChart();
+    }
+
+    function updateChartMode(mode) {
+        chartMode = mode;
+        document.querySelectorAll(".chart-filter-btn").forEach((btn) => {
+            btn.classList.toggle("active", btn.innerText.toLowerCase().includes(mode));
+        });
+        updateChart();
+    }
+
+    function updateChart() {
+        const ctx = document.getElementById("expenseChart").getContext("2d");
+        let labels = [];
+        let values = [];
+
+        if (chartMode === "month") {
+            const monthMap = {};
+            rawData.forEach((e) => {
+                const m = e.date.substring(0, 7);
+                monthMap[m] = (monthMap[m] || 0) + parseFloat(e.amount);
+            });
+            labels = Object.keys(monthMap).sort();
+            values = labels.map((l) => monthMap[l]);
+        } else {
+            const yearMap = {};
+            rawData.forEach((e) => {
+                const y = e.date.substring(0, 4);
+                yearMap[y] = (yearMap[y] || 0) + parseFloat(e.amount);
+            });
+            labels = Object.keys(yearMap).sort();
+            values = labels.map((l) => yearMap[l]);
+        }
+
+        if (expenseChart) expenseChart.destroy();
+        expenseChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Expense",
+                    data: values,
+                    backgroundColor: "#4e54c8",
+                    borderRadius: 8,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: "#f3f4f6" } },
+                    x: { grid: { display: false } }
+                },
+            },
+        });
+    }
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} 
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agroexpence Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        --primary-bg: #E6D8C3;
+        --sidebar-bg: #C2A68C;
+        --sidebar-hover: rgba(255, 255, 255, 0.1);
+        --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --accent-color: #4f46e5;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--primary-bg);
+        margin: 0;
+        display: flex;
+      }
+
+      .sidebar {
+        width: 260px;
+        height: 100vh;
+        background: var(--sidebar-bg);
+        position: fixed;
+        left: 0;
+        top: 0;
+        transition: all 0.3s ease;
+        z-index: 1000;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .sidebar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .sidebar::-webkit-scrollbar-thumb {
+        background: #374151;
+        border-radius: 10px;
+      }
+      .sidebar.hidden {
+        left: -260px;
+      }
+      .sidebar-brand {
+        color: white;
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .sidebar-nav {
+        flex-grow: 1;
+      }
+
+      .sidebar a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        color: #2a0000;
+        text-decoration: none;
+        border-radius: 8px;
+        margin-bottom: 4px;
+        transition: 0.2s;
+      }
+      .sidebar a:hover,
+      .sidebar a.active {
+        background: var(--sidebar-hover);
+        color: white;
+      }
+      .sidebar-heading {
+        text-transform: uppercase;
+        color: #4b5563;
+        font-weight: 700;
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        display: block;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        padding-left: 16px;
+      }
+
+      .main-content {
+        margin-left: 260px;
+        width: 100%;
+        padding: 40px;
+        transition: all 0.3s ease;
+      }
+      .main-content.expanded {
+        margin-left: 0;
+      }
+
+      .stat-card {
+        background: white;
+        border: none;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        padding: 24px;
+        height: 100%;
+      }
+      .stat-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #6b7280;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+      }
+
+      .chart-container {
+        background: white;
+        padding: 24px;
+        border-radius: 20px;
+        box-shadow: var(--card-shadow);
+        margin-top: 30px;
+        height: 100%;
+      }
+
+      .transaction-list {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .transaction-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f3f4f6;
+      }
+      .toggle-btn {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 8px 15px;
+        cursor: pointer;
+        margin-bottom: 25px;
+      }
+
+      .logout-section {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 20px;
+        margin-top: 20px;
+      }
+      .logout-btn {
+        color: #f87171 !important;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+      }
+
+      /* Chart Filter Buttons */
+      .chart-filter-btn {
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        border-radius: 20px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        color: #6b7280;
+        margin-left: 5px;
+      }
+      .chart-filter-btn.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-leaf text-success"></i>
+        <span>Agroexpence</span>
+      </div>
+
+      <div class="sidebar-nav">
+        <small class="sidebar-heading">Main</small>
+        <a href="{% url 'dashboard_view' %}" class="active"
+          ><i class="fas fa-th-large"></i> Dashboard</a
+        >
+
+        <small class="sidebar-heading">Personal</small>
+        <a href="/todo/"><i class="fas fa-check-double"></i> To-Do List</a>
+
+        <small class="sidebar-heading">Finance</small>
+        <div class="nav-item">
+          <a href="{% url 'form_view' %}"
+            ><i class="fas fa-arrow-trend-down"></i> Expenses</a
+          >
+          <div class="ms-4 mt-1 border-start ps-3">
+            <a href="{% url 'addexpence_view' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-plus-circle"></i> Add New</a
+            >
+            <a href="{% url 'chart_view' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-chart-line"></i> Analytics</a
+            >  
+            <a href="{% url 'filter_view' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-filter"></i> Filters</a
+            >
+            <a href="{% url 'upload-form' %}" style="font-size: 0.85rem"
+              ><i class="fas fa-camera"></i> OCR Scan</a
+            >
+          </div>
+        </div>
+        <a href="/accounts/"><i class="fas fa-university"></i> Accounts</a>
+
+        <small class="sidebar-heading">Management</small>
+        <a href="/employee/"><i class="fas fa-users"></i> Employees</a>
+        <a href="/project/"><i class="fas fa-diagram-project"></i> Projects</a>
+        <a href="/tasks/"><i class="fas fa-list-check"></i> Tasks</a>
+      </div>
+
+      <div class="logout-section">
+        <a href="{% url 'logout' %}" class="logout-btn">
+          <i class="fas fa-right-from-bracket"></i> Logout
+        </a>
+      </div>
+    </nav>
+
+    <div class="main-content" id="mainContent">
+      <header class="mb-5 d-flex justify-content-between align-items-center">
+        <button class="toggle-btn" id="toggleBtn"><i class="fas fa-bars me-2"></i> Menu</button>
+        <div>
+          <h2 class="fw-bold mb-1">
+            Hello, {{ request.user.username|capfirst }}!
+          </h2>
+          <p class="text-muted">Here is your personal financial summary.</p>
+        </div>
+        <div
+          class="user-badge d-none d-md-flex align-items-center gap-3 bg-white p-2 px-3 rounded-pill shadow-sm"
+        >
+          <i class="fas fa-user-circle fa-2x text-primary"></i>
+          <span class="fw-bold">{{ request.user.email }}</span>
+        </div>
+      </header>
+
+      <header class="mb-5">
+        <h2 class="fw-bold mb-1">Live Dashboard</h2>
+
+        <p class="text-muted">Actual financial data from your account.</p>
+      </header>
+
+      <div class="row g-4 mb-4">
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-title">Total Expenses</div>
+            <div class="stat-value text-primary" id="totalExpense">₹ 0</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-title">Monthly Avg.</div>
+            <div class="stat-value text-success" id="monthlyExpense">₹ 0</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-title">This Year</div>
+            <div class="stat-value text-info" id="yearExpense">₹ 0</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-title">Categories</div>
+            <div class="stat-value fs-6 text-warning" id="categoryList">
+              ---
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="fw-bold m-0">Spending Trends</h5>
+              <div>
+                <button
+                  class="chart-filter-btn active"
+                  onclick="updateChartMode('month')"
+                >
+                  Monthly
+                </button>
+                <button
+                  class="chart-filter-btn"
+                  onclick="updateChartMode('year')"
+                >
+                  Yearly
+                </button>
+              </div>
+            </div>
+            <canvas id="expenseChart"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="chart-container">
+            <h5 class="mb-4 fw-bold">Recent List</h5>
+            <div class="transaction-list" id="transactionList">
+              <p class="text-muted small text-center py-5">
+                No transactions found.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let expenseChart;
+      let chartMode = "month"; // default
+      let rawData = [];
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const toggleBtn = document.getElementById("toggleBtn");
+        toggleBtn.addEventListener("click", () => {
+          document.getElementById("sidebar").classList.toggle("hidden");
+          document.getElementById("mainContent").classList.toggle("expanded");
+        });
+
+        fetchExpenses();
+      });
+
+      function fetchExpenses() {
+        fetch("http://127.0.0.1:8000/expenses/getexpenses/")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.expenses && data.expenses.length > 0) {
+              rawData = data.expenses;
+              updateUI();
+            }
+          })
+          .catch((err) => console.error("API Error:", err));
+      }
+
+      function updateUI() {
+        // 1. Total
+        const total = rawData.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+        document.getElementById("totalExpense").textContent =
+          "₹ " + total.toLocaleString("en-IN");
+
+        // 2. Monthly Average (Actual based on unique months present)
+        const uniqueMonths = [
+          ...new Set(rawData.map((e) => e.date.substring(0, 7))),
+        ];
+        const avg = total / (uniqueMonths.length || 1);
+        document.getElementById("monthlyExpense").textContent =
+          "₹ " + Math.round(avg).toLocaleString("en-IN");
+
+        // 3. Yearly Total (Actual Current Year)
+        const currentYear = new Date().getFullYear().toString();
+        const yearlyTotal = rawData
+          .filter((e) => e.date.startsWith(currentYear))
+          .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+        document.getElementById("yearExpense").textContent =
+          "₹ " + yearlyTotal.toLocaleString("en-IN");
+
+        // 4. Actual Category List
+        const categories = [...new Set(rawData.map((e) => e.category))];
+        document.getElementById("categoryList").textContent =
+          categories.slice(0, 3).join(", ") +
+          (categories.length > 3 ? "..." : "");
+
+        // 5. Transaction List
+        const listContainer = document.getElementById("transactionList");
+        listContainer.innerHTML = rawData
+          .slice(-10)
+          .reverse()
+          .map(
+            (e) => `
+                <div class="transaction-item">
+                    <div>
+                        <div class="fw-bold small">${e.category}</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">${
+                          e.date
+                        }</div>
+                    </div>
+                    <div class="fw-bold text-dark">₹${parseFloat(
+                      e.amount
+                    ).toLocaleString("en-IN")}</div>
+                </div>
+            `
+          )
+          .join("");
+
+        updateChart();
+      }
+
+      function updateChartMode(mode) {
+        chartMode = mode;
+        document.querySelectorAll(".chart-filter-btn").forEach((btn) => {
+          btn.classList.toggle(
+            "active",
+            btn.innerText.toLowerCase().includes(mode)
+          );
+        });
+        updateChart();
+      }
+
+      function updateChart() {
+        const ctx = document.getElementById("expenseChart").getContext("2d");
+        let labels = [];
+        let values = [];
+
+        if (chartMode === "month") {
+          const monthMap = {};
+          rawData.forEach((e) => {
+            const m = e.date.substring(0, 7); // YYYY-MM
+            monthMap[m] = (monthMap[m] || 0) + parseFloat(e.amount);
+          });
+          labels = Object.keys(monthMap).sort();
+          values = labels.map((l) => monthMap[l]);
+        } else {
+          const yearMap = {};
+          rawData.forEach((e) => {
+            const y = e.date.substring(0, 4); // YYYY
+            yearMap[y] = (yearMap[y] || 0) + parseFloat(e.amount);
+          });
+          labels = Object.keys(yearMap).sort();
+          values = labels.map((l) => yearMap[l]);
+        }
+
+        if (expenseChart) expenseChart.destroy();
+        expenseChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Expense",
+                data: values,
+                backgroundColor: "#4f46e5",
+                borderRadius: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
+
+ {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 {% comment %} <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -481,471 +1196,12 @@
 </html>
 {% endcomment %}
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Agroexpence Dashboard</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-      :root {
-        --primary-bg: #f4f7fe;
-        --sidebar-bg: #111827;
-        --sidebar-hover: rgba(255, 255, 255, 0.1);
-        --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        --accent-color: #4f46e5;
-      }
 
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: var(--primary-bg);
-        margin: 0;
-        display: flex;
-      }
 
-      .sidebar {
-        width: 260px;
-        height: 100vh;
-        background: var(--sidebar-bg);
-        position: fixed;
-        left: 0;
-        top: 0;
-        transition: all 0.3s ease;
-        z-index: 1000;
-        padding: 24px;
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-      }
-      .sidebar::-webkit-scrollbar {
-        width: 5px;
-      }
-      .sidebar::-webkit-scrollbar-thumb {
-        background: #374151;
-        border-radius: 10px;
-      }
-      .sidebar.hidden {
-        left: -260px;
-      }
-      .sidebar-brand {
-        color: white;
-        font-weight: 700;
-        font-size: 1.25rem;
-        margin-bottom: 30px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .sidebar-nav {
-        flex-grow: 1;
-      }
 
-      .sidebar a {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        color: #9ca3af;
-        text-decoration: none;
-        border-radius: 8px;
-        margin-bottom: 4px;
-        transition: 0.2s;
-      }
-      .sidebar a:hover,
-      .sidebar a.active {
-        background: var(--sidebar-hover);
-        color: white;
-      }
-      .sidebar-heading {
-        text-transform: uppercase;
-        color: #4b5563;
-        font-weight: 700;
-        font-size: 0.7rem;
-        letter-spacing: 0.05em;
-        display: block;
-        margin-top: 1.5rem;
-        margin-bottom: 0.5rem;
-        padding-left: 16px;
-      }
 
-      .main-content {
-        margin-left: 260px;
-        width: 100%;
-        padding: 40px;
-        transition: all 0.3s ease;
-      }
-      .main-content.expanded {
-        margin-left: 0;
-      }
 
-      .stat-card {
-        background: white;
-        border: none;
-        border-radius: 16px;
-        box-shadow: var(--card-shadow);
-        padding: 24px;
-        height: 100%;
-      }
-      .stat-title {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        color: #6b7280;
-        font-weight: 600;
-        margin-bottom: 10px;
-      }
-      .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #111827;
-      }
 
-      .chart-container {
-        background: white;
-        padding: 24px;
-        border-radius: 20px;
-        box-shadow: var(--card-shadow);
-        margin-top: 30px;
-        height: 100%;
-      }
 
-      .transaction-list {
-        max-height: 400px;
-        overflow-y: auto;
-      }
-      .transaction-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 12px 0;
-        border-bottom: 1px solid #f3f4f6;
-      }
-      .toggle-btn {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 8px 15px;
-        cursor: pointer;
-        margin-bottom: 25px;
-      }
 
-      .logout-section {
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 20px;
-        margin-top: 20px;
-      }
-      .logout-btn {
-        color: #f87171 !important;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-      }
 
-      /* Chart Filter Buttons */
-      .chart-filter-btn {
-        font-size: 0.75rem;
-        padding: 4px 12px;
-        border-radius: 20px;
-        border: 1px solid #e5e7eb;
-        background: white;
-        color: #6b7280;
-        margin-left: 5px;
-      }
-      .chart-filter-btn.active {
-        background: var(--accent-color);
-        color: white;
-        border-color: var(--accent-color);
-      }
-    </style>
-  </head>
-  <body>
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        <i class="fas fa-leaf text-success"></i>
-        <span>Agroexpence</span>
-      </div>
-
-      <div class="sidebar-nav">
-        <small class="sidebar-heading">Main</small>
-        <a href="{% url 'dashboard_view' %}" class="active"
-          ><i class="fas fa-th-large"></i> Dashboard</a
-        >
-
-        <small class="sidebar-heading">Personal</small>
-        <a href="/todo/"><i class="fas fa-check-double"></i> To-Do List</a>
-
-        <small class="sidebar-heading">Finance</small>
-        <div class="nav-item">
-          <a href="{% url 'form_view' %}"
-            ><i class="fas fa-arrow-trend-down"></i> Expenses</a
-          >
-          <div class="ms-4 mt-1 border-start ps-3">
-            <a href="{% url 'addexpence_view' %}" style="font-size: 0.85rem"
-              ><i class="fas fa-plus-circle"></i> Add New</a
-            >
-            {% comment %} <a href="{% url 'chart_view' %}" style="font-size: 0.85rem"
-              ><i class="fas fa-chart-line"></i> Analytics</a
-            > {% endcomment %}
-            <a href="{% url 'filter_view' %}" style="font-size: 0.85rem"
-              ><i class="fas fa-filter"></i> Filters</a
-            >
-            <a href="{% url 'upload-form' %}" style="font-size: 0.85rem"
-              ><i class="fas fa-camera"></i> OCR Scan</a
-            >
-          </div>
-        </div>
-        {% comment %} <a href="/accounts/"><i class="fas fa-university"></i> Accounts</a> {% endcomment %}
-
-        <small class="sidebar-heading">Management</small>
-        {% comment %} <a href="/employee/"><i class="fas fa-users"></i> Employees</a> {% endcomment %}
-        {% comment %} <a href="/project/"><i class="fas fa-diagram-project"></i> Projects</a> {% endcomment %}
-        {% comment %} <a href="/tasks/"><i class="fas fa-list-check"></i> Tasks</a> {% endcomment %}
-      </div>
-
-      <div class="logout-section">
-        <a href="{% url 'logout' %}" class="logout-btn">
-          <i class="fas fa-right-from-bracket"></i> Logout
-        </a>
-      </div>
-    </nav>
-
-    <div class="main-content" id="mainContent">
-      <header class="mb-5 d-flex justify-content-between align-items-center">
-        <button class="toggle-btn" id="toggleBtn"><i class="fas fa-bars me-2"></i> Menu</button>
-        <div>
-          <h2 class="fw-bold mb-1">
-            Hello, {{ request.user.username|capfirst }}!
-          </h2>
-          <p class="text-muted">Here is your personal financial summary.</p>
-        </div>
-        <div
-          class="user-badge d-none d-md-flex align-items-center gap-3 bg-white p-2 px-3 rounded-pill shadow-sm"
-        >
-          <i class="fas fa-user-circle fa-2x text-primary"></i>
-          <span class="fw-bold">{{ request.user.email }}</span>
-        </div>
-      </header>
-
-      <header class="mb-5">
-        <h2 class="fw-bold mb-1">Live Dashboard</h2>
-
-        <p class="text-muted">Actual financial data from your account.</p>
-      </header>
-
-      <div class="row g-4 mb-4">
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-title">Total Expenses</div>
-            <div class="stat-value text-primary" id="totalExpense">₹ 0</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-title">Monthly Avg.</div>
-            <div class="stat-value text-success" id="monthlyExpense">₹ 0</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-title">This Year</div>
-            <div class="stat-value text-info" id="yearExpense">₹ 0</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-title">Categories</div>
-            <div class="stat-value fs-6 text-warning" id="categoryList">
-              ---
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-lg-8">
-          <div class="chart-container">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <h5 class="fw-bold m-0">Spending Trends</h5>
-              <div>
-                <button
-                  class="chart-filter-btn active"
-                  onclick="updateChartMode('month')"
-                >
-                  Monthly
-                </button>
-                <button
-                  class="chart-filter-btn"
-                  onclick="updateChartMode('year')"
-                >
-                  Yearly
-                </button>
-              </div>
-            </div>
-            <canvas id="expenseChart"></canvas>
-          </div>
-        </div>
-        <div class="col-lg-4">
-          <div class="chart-container">
-            <h5 class="mb-4 fw-bold">Recent List</h5>
-            <div class="transaction-list" id="transactionList">
-              <p class="text-muted small text-center py-5">
-                No transactions found.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      let expenseChart;
-      let chartMode = "month"; // default
-      let rawData = [];
-
-      document.addEventListener("DOMContentLoaded", function () {
-        const toggleBtn = document.getElementById("toggleBtn");
-        toggleBtn.addEventListener("click", () => {
-          document.getElementById("sidebar").classList.toggle("hidden");
-          document.getElementById("mainContent").classList.toggle("expanded");
-        });
-
-        fetchExpenses();
-      });
-
-      function fetchExpenses() {
-        fetch("http://127.0.0.1:8000/expenses/getexpenses/")
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.expenses && data.expenses.length > 0) {
-              rawData = data.expenses;
-              updateUI();
-            }
-          })
-          .catch((err) => console.error("API Error:", err));
-      }
-
-      function updateUI() {
-        // 1. Total
-        const total = rawData.reduce((sum, e) => sum + parseFloat(e.amount), 0);
-        document.getElementById("totalExpense").textContent =
-          "₹ " + total.toLocaleString("en-IN");
-
-        // 2. Monthly Average (Actual based on unique months present)
-        const uniqueMonths = [
-          ...new Set(rawData.map((e) => e.date.substring(0, 7))),
-        ];
-        const avg = total / (uniqueMonths.length || 1);
-        document.getElementById("monthlyExpense").textContent =
-          "₹ " + Math.round(avg).toLocaleString("en-IN");
-
-        // 3. Yearly Total (Actual Current Year)
-        const currentYear = new Date().getFullYear().toString();
-        const yearlyTotal = rawData
-          .filter((e) => e.date.startsWith(currentYear))
-          .reduce((sum, e) => sum + parseFloat(e.amount), 0);
-        document.getElementById("yearExpense").textContent =
-          "₹ " + yearlyTotal.toLocaleString("en-IN");
-
-        // 4. Actual Category List
-        const categories = [...new Set(rawData.map((e) => e.category))];
-        document.getElementById("categoryList").textContent =
-          categories.slice(0, 3).join(", ") +
-          (categories.length > 3 ? "..." : "");
-
-        // 5. Transaction List
-        const listContainer = document.getElementById("transactionList");
-        listContainer.innerHTML = rawData
-          .slice(-10)
-          .reverse()
-          .map(
-            (e) => `
-                <div class="transaction-item">
-                    <div>
-                        <div class="fw-bold small">${e.category}</div>
-                        <div class="text-muted" style="font-size: 0.7rem;">${
-                          e.date
-                        }</div>
-                    </div>
-                    <div class="fw-bold text-dark">₹${parseFloat(
-                      e.amount
-                    ).toLocaleString("en-IN")}</div>
-                </div>
-            `
-          )
-          .join("");
-
-        updateChart();
-      }
-
-      function updateChartMode(mode) {
-        chartMode = mode;
-        document.querySelectorAll(".chart-filter-btn").forEach((btn) => {
-          btn.classList.toggle(
-            "active",
-            btn.innerText.toLowerCase().includes(mode)
-          );
-        });
-        updateChart();
-      }
-
-      function updateChart() {
-        const ctx = document.getElementById("expenseChart").getContext("2d");
-        let labels = [];
-        let values = [];
-
-        if (chartMode === "month") {
-          const monthMap = {};
-          rawData.forEach((e) => {
-            const m = e.date.substring(0, 7); // YYYY-MM
-            monthMap[m] = (monthMap[m] || 0) + parseFloat(e.amount);
-          });
-          labels = Object.keys(monthMap).sort();
-          values = labels.map((l) => monthMap[l]);
-        } else {
-          const yearMap = {};
-          rawData.forEach((e) => {
-            const y = e.date.substring(0, 4); // YYYY
-            yearMap[y] = (yearMap[y] || 0) + parseFloat(e.amount);
-          });
-          labels = Object.keys(yearMap).sort();
-          values = labels.map((l) => yearMap[l]);
-        }
-
-        if (expenseChart) expenseChart.destroy();
-        expenseChart = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: "Expense",
-                data: values,
-                backgroundColor: "#4f46e5",
-                borderRadius: 6,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } },
-          },
-        });
-      }
-    </script>
-  </body>
-</html>

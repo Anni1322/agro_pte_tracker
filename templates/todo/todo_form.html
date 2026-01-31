@@ -1,4 +1,160 @@
- 
+{% extends 'base.html' %}
+
+{% block title %}{% if todo %}Edit Task{% else %}New Task{% endif %} | Goal Tracker{% endblock %}
+
+{% block page_title %}{% if todo %}Edit Task{% else %}New Task{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Use your specific styling here */
+    .card { border: none; border-radius: 15px; overflow: hidden; }
+    .form-control, .form-select { border-radius: 10px; padding: 12px; border: 1px solid #e0e0e0; }
+    .form-control:focus { border-color: #4e54c8; box-shadow: 0 4px 10px rgba(78, 84, 200, 0.1); }
+    
+    .btn-modern { border-radius: 10px; padding: 12px 25px; font-weight: 600; transition: all 0.3s; }
+    .btn-modern:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    
+    .bg-success-soft { background-color: rgba(25, 135, 84, 0.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8 mb-4">
+        <div class="card shadow-sm bg-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold m-0 text-uppercase small text-muted">Weekly Completion Trend</h6>
+                    <span class="badge bg-success-soft text-success">Live Updates</span>
+                </div>
+                <canvas id="completionChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-10 col-lg-8">
+        <div class="card shadow-lg">
+            <div class="card-body p-4 p-md-5">
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Task Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="What needs to be done?" value="{{ todo.title|default:'' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Priority</label>
+                            <select name="priority" class="form-select">
+                                <option value="low" {% if todo.priority == 'low' %}selected{% endif %}>🟢 Low Priority</option>
+                                <option value="medium" {% if todo.priority == 'medium' %}selected{% endif %}>🟡 Medium Priority</option>
+                                <option value="high" {% if todo.priority == 'high' %}selected{% endif %}>🔴 High Priority</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Category</label>
+                            <input type="text" name="category" class="form-control" placeholder="e.g. Field Work, Office" value="{{ todo.category|default:'' }}">
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        {% if request.user.is_superuser or request.user.username == 'admin' %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Assignee</label>
+                            <select name="assigned_to" class="form-select">
+                                {% for user in users %}
+                                    <option value="{{ user.id }}" {% if todo.assigned_to.id == user.id %}selected{% endif %}>
+                                        👤 {{ user.username|capfirst }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                            <input type="hidden" name="assigned_to" value="{{ request.user.id }}">
+                        {% endif %}
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Due Date & Time</label>
+                            <input type="datetime-local" name="due_date" class="form-control" value="{{ todo.due_date|date:'Y-m-d\TH:i' }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Add specific details...">{{ todo.description|default:'' }}</textarea>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Repeat Frequency</label>
+                            <select name="frequency" class="form-select">
+                                <option value="none" {% if todo.frequency == 'none' %}selected{% endif %}>No Repeat</option>
+                                <option value="daily" {% if todo.frequency == 'daily' %}selected{% endif %}>Daily</option>
+                                <option value="weekly" {% if todo.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                                <option value="monthly" {% if todo.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Status</label>
+                            <div class="form-check form-switch p-0 d-flex align-items-center bg-light rounded border px-3" style="height: 50px;">
+                                <label class="form-check-label flex-grow-1 ps-2" for="statusSwitch">Mark Finished</label>
+                                <input class="form-check-input" type="checkbox" name="is_completed" id="statusSwitch" style="width: 2.5em; height: 1.2em;" {% if todo.is_completed %}checked{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary btn-modern flex-grow-1">
+                            <i class="fas fa-save me-2"></i>{% if todo %}Update Task{% else %}Create Task{% endif %}
+                        </button>
+                        <a href="{% url 'todo_list' %}" class="btn btn-light btn-modern px-4">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const chartCtx = document.getElementById('completionChart').getContext('2d');
+    new Chart(chartCtx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Completion Rate',
+                data: [5, 8, 4, 10, 7, 3, 9],
+                borderColor: '#4e54c8',
+                backgroundColor: 'rgba(78, 84, 200, 0.05)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { display: false },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+{% comment %}  
  <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -251,7 +407,7 @@
  
  
  
- 
+  {% endcomment %}
  
  
  

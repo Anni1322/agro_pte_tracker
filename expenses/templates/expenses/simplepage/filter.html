@@ -1,4 +1,215 @@
-<!DOCTYPE html>
+{% extends 'base.html' %}
+
+{% block title %}Expense Analytics | Agroexpence{% endblock %}
+{% block page_title %}Expense Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Unique Dashboard UI Elements */
+    .filter-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 25px; }
+    .stats-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); height: 100%; }
+    .total-amount { font-size: 2rem; font-weight: 700; color: var(--primary-color); }
+    
+    .table-card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; margin-top: 25px; }
+    .table thead { background: #f3f4f6; }
+    .badge-cat { background: #e0e7ff; color: #4338ca; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    
+    .recent-item { transition: background 0.2s; }
+    .recent-item:hover { background: #f9fafb; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="filter-card">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Month</label>
+                <select id="monthSelect" class="form-select border-0 bg-light">
+                    <option value="">Full Year</option>
+                    <option value="2026-01">January 2026</option>
+                    <option value="2026-02">February 2026</option>
+                    <option value="2025-12">December 2025</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Category</label>
+                <select id="categorySelect" class="form-select border-0 bg-light">
+                    <option value="">All Categories</option>
+                    <option value="rent">Rent</option>
+                    <option value="food">Food</option>
+                    <option value="transport">Transport</option>
+                    <option value="shopping">Shopping</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100 shadow-sm" onclick="updateFilters()">
+                    <i class="fas fa-filter me-2"></i> Apply Filter
+                </button>
+            </div>
+            <div class="col-md-3 text-end">
+                <small class="text-muted d-block mb-1">Total Found</small>
+                <div class="total-amount" id="totalExpense">₹ 0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7 mb-4">
+            <div class="stats-card">
+                <h6 class="fw-bold mb-4"><i class="fas fa-chart-pie me-2 text-primary"></i>Spending Analysis</h6>
+                <div style="height: 300px;">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5 mb-4">
+            <div class="stats-card">
+                <h6 class="fw-bold mb-4"><i class="fas fa-history me-2 text-primary"></i>Recent Transactions</h6>
+                <div id="expenseList" class="overflow-auto" style="max-height: 300px;">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="p-3 border-bottom">
+            <h6 class="m-0 fw-bold">Transaction Ledger</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table m-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="border-0 px-4 py-3">Date</th>
+                        <th class="border-0 py-3">Category</th>
+                        <th class="border-0 py-3">Description</th>
+                        <th class="border-0 px-4 py-3 text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="expenseTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let expenses = [];
+    let chart;
+
+    async function fetchExpenses() {
+        try {
+            // Using your existing endpoint
+            const response = await fetch("{% url 'getexpenses' %}");
+            const data = await response.json();
+            expenses = data.expenses.map(exp => ({
+                ...exp,
+                amount: parseFloat(exp.amount)
+            }));
+            updateDashboard(expenses);
+        } catch (error) {
+            console.error("API Error:", error);
+            // Fallback for UI testing
+            expenses = [
+                {date: '2026-01-15', category: 'food', amount: 1200, description: 'Team Lunch'},
+                {date: '2026-01-20', category: 'rent', amount: 15000, description: 'Office Rent'}
+            ];
+            updateDashboard(expenses);
+        }
+    }
+
+    function updateFilters() {
+        const month = document.getElementById("monthSelect").value;
+        const category = document.getElementById("categorySelect").value;
+        let filtered = expenses.filter(exp => 
+            (!month || exp.date.startsWith(month)) && 
+            (!category || exp.category.toLowerCase() === category.toLowerCase())
+        );
+        updateDashboard(filtered);
+    }
+
+    function updateDashboard(data) {
+        let total = data.reduce((sum, exp) => sum + exp.amount, 0);
+        document.getElementById("totalExpense").textContent = `₹ ${total.toLocaleString('en-IN')}`;
+
+        const list = document.getElementById("expenseList");
+        const table = document.getElementById("expenseTableBody");
+        list.innerHTML = ""; table.innerHTML = "";
+
+        if (data.length === 0) {
+            list.innerHTML = '<div class="text-center text-muted py-5">No transactions found</div>';
+            table.innerHTML = '<tr><td colspan="4" class="text-center py-4">No data available for selected filters</td></tr>';
+        }
+
+        data.forEach(exp => {
+            // Recent Activity List
+            list.innerHTML += `
+                <div class="recent-item d-flex justify-content-between align-items-center mb-2 p-3 border-bottom rounded">
+                    <div>
+                        <div class="fw-bold small">${exp.description || 'General Expense'}</div>
+                        <small class="text-muted">${exp.date}</small>
+                    </div>
+                    <div class="fw-bold text-dark">₹${exp.amount.toLocaleString('en-IN')}</div>
+                </div>`;
+
+            // Ledger Table
+            table.innerHTML += `
+                <tr>
+                    <td class="px-4 text-muted small">${exp.date}</td>
+                    <td><span class="badge-cat">${exp.category}</span></td>
+                    <td class="text-dark">${exp.description || '-'}</td>
+                    <td class="px-4 text-end fw-bold">₹${exp.amount.toLocaleString('en-IN')}</td>
+                </tr>`;
+        });
+
+        updateChart(data);
+    }
+
+    function updateChart(data) {
+        const ctx = document.getElementById("expenseChart").getContext("2d");
+        const cats = [...new Set(data.map(e => e.category))];
+        const totals = cats.map(c => data.filter(e => e.category === c).reduce((s, e) => s + e.amount, 0));
+
+        if (chart) chart.destroy();
+        
+        chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: cats.map(c => c.toUpperCase()),
+                datasets: [{
+                    data: totals,
+                    backgroundColor: ['#4e54c8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false,
+                cutout: '75%', 
+                plugins: { 
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } 
+                } 
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", fetchExpenses);
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -235,4 +446,4 @@
         document.addEventListener("DOMContentLoaded", fetchExpenses);
     </script>
 </body>
-</html>
+</html> {% endcomment %}
