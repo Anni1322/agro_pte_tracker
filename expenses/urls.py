@@ -33,4 +33,5 @@ urlpatterns = [
     # img pay ss
     path('upload-form/', UploadFormView.as_view(), name='upload-form'),
     path('upload-transaction/', TransactionOCRView.as_view(), name='upload-transaction'),
+    path('api/ai-assistant/', views.ai_assistant_api, name='ai_assistant_api'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -16,7 +16,7 @@ class Expense(models.Model):
     
     
     
-
+30
 class Expense_day_wise(models.Model):
     CATEGORY_CHOICES = [
         ('rent', 'Rent'),

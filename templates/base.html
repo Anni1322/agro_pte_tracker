@@ -102,9 +102,15 @@
             <a class="nav-link" href="/accounts/"><i class="fas fa-university"></i> Accounts</a>
 
             <small class="sidebar-heading">Management</small>
-            {% comment %} <a class="nav-link" href="/employee/"><i class="fas fa-users"></i> Employees</a> {% endcomment %}
-            {% comment %} <a class="nav-link" href="/project/"><i class="fas fa-diagram-project"></i> Projects</a> {% endcomment %}
-            {% comment %} <a class="nav-link" href="/tasks/"><i class="fas fa-list-check"></i> Tasks</a> {% endcomment %}
+            <a class="nav-link {% if '/employee/' in request.path %}active{% endif %}" href="/employee/">
+                <i class="fas fa-users"></i> Employees
+            </a>
+            <a class="nav-link {% if '/project/' in request.path %}active{% endif %}" href="/project/">
+                <i class="fas fa-diagram-project"></i> Projects
+            </a>
+            <a class="nav-link {% if '/tasks/' in request.path %}active{% endif %}" href="/tasks/">
+                <i class="fas fa-list-check"></i> Tasks
+            </a>
         </nav>
     </div>
 

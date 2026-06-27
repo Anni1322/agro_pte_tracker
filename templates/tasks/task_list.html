@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}Tasks Kanban | Agro Tracker{% endblock %}
+{% block page_title %}Task Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kanban-col {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 20px;
+        min-height: 500px;
+        border: 1px solid #e2e8f0;
+    }
+    .task-card {
+        background: white;
+        border: none;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid #4e54c8;
+    }
+    .task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .task-card.in-progress {
+        border-left-color: #f59e0b;
+    }
+    .task-card.completed {
+        border-left-color: #10b981;
+    }
+    .avatar-mini {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #764ba2;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+    .btn-create {
+        background: linear-gradient(135deg, #4e54c8, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 30px;
+        padding: 8px 20px;
+        font-weight: 600;
+    }
+    .btn-create:hover {
+        background: linear-gradient(135deg, #3f44ab, #633c8c);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0 text-dark">Tasks board</h3>
+        <a href="{% url 'task_create' %}" class="btn btn-create shadow-sm">
+            <i class="fas fa-plus me-2"></i>Add Task
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Pending Column -->
+        <div class="col-12 col-lg-4">
+            <div class="kanban-col">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-dark m-0"><i class="far fa-circle text-primary me-2"></i>Pending</h5>
+                    <span class="badge bg-primary rounded-pill">{{ pending_tasks.count }}</span>
+                </div>
+                <div class="kanban-items">
+                    {% for task in pending_tasks %}
+                        <div class="task-card">
+                            <span class="text-muted small d-block mb-1"><i class="fas fa-project-diagram me-1"></i>{{ task.project.name }}</span>
+                            <h5 class="fw-bold text-dark mb-2">{{ task.title }}</h5>
+                            <p class="text-muted small mb-3">{{ task.description|truncatewords:15 }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-mini" title="{{ task.assigned_to.name }}">
+                                        {{ task.assigned_to.name|slice:":1"|upper }}
+                                    </div>
+                                    <span class="text-muted small">{{ task.assigned_to.name }}</span>
+                                </div>
+                                <span class="text-danger small"><i class="far fa-calendar-alt me-1"></i>{{ task.deadline|date:"M d" }}</span>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                                <a href="{% url 'task_update' task.pk %}" class="btn btn-sm btn-light rounded-pill px-3 py-1"><i class="fas fa-edit"></i></a>
+                                <a href="{% url 'task_delete' task.pk %}" class="btn btn-sm btn-light text-danger rounded-pill px-3 py-1"><i class="fas fa-trash"></i></a>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-center text-muted py-4">No pending tasks</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- In Progress Column -->
+        <div class="col-12 col-lg-4">
+            <div class="kanban-col">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-dark m-0"><i class="fas fa-spinner text-warning me-2"></i>In Progress</h5>
+                    <span class="badge bg-warning rounded-pill text-dark">{{ progress_tasks.count }}</span>
+                </div>
+                <div class="kanban-items">
+                    {% for task in progress_tasks %}
+                        <div class="task-card in-progress">
+                            <span class="text-muted small d-block mb-1"><i class="fas fa-project-diagram me-1"></i>{{ task.project.name }}</span>
+                            <h5 class="fw-bold text-dark mb-2">{{ task.title }}</h5>
+                            <p class="text-muted small mb-3">{{ task.description|truncatewords:15 }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-mini" title="{{ task.assigned_to.name }}">
+                                        {{ task.assigned_to.name|slice:":1"|upper }}
+                                    </div>
+                                    <span class="text-muted small">{{ task.assigned_to.name }}</span>
+                                </div>
+                                <span class="text-danger small"><i class="far fa-calendar-alt me-1"></i>{{ task.deadline|date:"M d" }}</span>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                                <a href="{% url 'task_update' task.pk %}" class="btn btn-sm btn-light rounded-pill px-3 py-1"><i class="fas fa-edit"></i></a>
+                                <a href="{% url 'task_delete' task.pk %}" class="btn btn-sm btn-light text-danger rounded-pill px-3 py-1"><i class="fas fa-trash"></i></a>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-center text-muted py-4">No tasks in progress</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Column -->
+        <div class="col-12 col-lg-4">
+            <div class="kanban-col">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-dark m-0"><i class="far fa-check-circle text-success me-2"></i>Completed</h5>
+                    <span class="badge bg-success rounded-pill">{{ completed_tasks.count }}</span>
+                </div>
+                <div class="kanban-items">
+                    {% for task in completed_tasks %}
+                        <div class="task-card completed">
+                            <span class="text-muted small d-block mb-1"><i class="fas fa-project-diagram me-1"></i>{{ task.project.name }}</span>
+                            <h5 class="fw-bold text-dark mb-2">{{ task.title }}</h5>
+                            <p class="text-muted small mb-3">{{ task.description|truncatewords:15 }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-mini" title="{{ task.assigned_to.name }}">
+                                        {{ task.assigned_to.name|slice:":1"|upper }}
+                                    </div>
+                                    <span class="text-muted small">{{ task.assigned_to.name }}</span>
+                                </div>
+                                <span class="text-success small"><i class="far fa-calendar-alt me-1"></i>Done</span>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                                <a href="{% url 'task_update' task.pk %}" class="btn btn-sm btn-light rounded-pill px-3 py-1"><i class="fas fa-edit"></i></a>
+                                <a href="{% url 'task_delete' task.pk %}" class="btn btn-sm btn-light text-danger rounded-pill px-3 py-1"><i class="fas fa-trash"></i></a>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-center text-muted py-4">No completed tasks</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

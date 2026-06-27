@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Employees | Agro Tracker{% endblock %}
+{% block page_title %}Employee Directory{% endblock %}
+
+{% block extra_css %}
+<style>
+    .employee-card {
+        background: white;
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .employee-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .avatar-placeholder {
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4e54c8, #764ba2);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+    .search-box {
+        border-radius: 30px;
+        padding-left: 20px;
+        border: 1px solid #e5e7eb;
+    }
+    .btn-create {
+        background: linear-gradient(135deg, #4e54c8, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 30px;
+        padding: 8px 20px;
+        font-weight: 600;
+    }
+    .btn-create:hover {
+        background: linear-gradient(135deg, #3f44ab, #633c8c);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <form method="GET" action="{% url 'employee_list' %}" class="d-flex gap-2 w-100 max-w-400">
+            <div class="input-group">
+                <input type="text" name="q" value="{{ query|default:'' }}" class="form-control search-box" placeholder="Search employees...">
+                <button class="btn btn-outline-secondary px-3 rounded-end-pill" type="submit">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            {% if query %}
+                <a href="{% url 'employee_list' %}" class="btn btn-light rounded-pill">Reset</a>
+            {% endif %}
+        </form>
+        <a href="{% url 'employee_create' %}" class="btn btn-create shadow-sm">
+            <i class="fas fa-user-plus me-2"></i>Add Employee
+        </a>
+    </div>
+
+    {% if employees %}
+        <div class="row g-4">
+            {% for emp in employees %}
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="employee-card p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="avatar-placeholder">
+                                {{ emp.name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">{{ emp.name }}</h5>
+                                <span class="badge bg-light text-primary border border-primary-subtle rounded-pill small">{{ emp.designation }}</span>
+                            </div>
+                        </div>
+                        <div class="text-muted small mb-4">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="fas fa-envelope text-secondary"></i>
+                                <span>{{ emp.email }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="fas fa-phone text-secondary"></i>
+                                <span>{{ emp.phone }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-calendar-alt text-secondary"></i>
+                                <span>Joined: {{ emp.date_joined|date:"M d, Y" }}</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                            <a href="{% url 'employee_update' emp.pk %}" class="btn btn-sm btn-outline-primary px-3 rounded-pill">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            <a href="{% url 'employee_delete' emp.pk %}" class="btn btn-sm btn-outline-danger px-3 rounded-pill">
+                                <i class="fas fa-trash-alt me-1"></i>Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+            <h5 class="text-secondary fw-semibold">No employees found</h5>
+            <p class="text-muted small mb-0">Add a new employee to get started.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

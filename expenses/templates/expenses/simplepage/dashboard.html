@@ -29,6 +29,74 @@
         border: 1px solid #e5e7eb; background: white; color: #6b7280; margin-left: 5px;
     }
     .chart-filter-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+    /* AI Assistant Floating Widget */
+    .ai-chat-bubble {
+        position: fixed; bottom: 30px; right: 30px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #4e54c8, #764ba2);
+        color: white; border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.6rem; box-shadow: 0 10px 25px rgba(78, 84, 200, 0.4);
+        z-index: 1000; transition: transform 0.3s;
+    }
+    .ai-chat-bubble:hover { transform: scale(1.1); }
+    .ai-chat-window {
+        position: fixed; bottom: 105px; right: 30px;
+        width: 380px; height: 500px; background: white;
+        border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        z-index: 1000; display: none; flex-direction: column;
+        overflow: hidden; border: 1px solid #f1f5f9;
+        transition: all 0.3s ease;
+    }
+    .ai-chat-header {
+        background: linear-gradient(135deg, #4e54c8, #764ba2);
+        color: white; padding: 16px 20px; display: flex;
+        justify-content: space-between; align-items: center;
+    }
+    .ai-chat-body {
+        flex: 1; padding: 20px; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 12px;
+        background: #f8fafc;
+    }
+    .ai-message {
+        max-width: 80%; padding: 12px 16px; border-radius: 16px;
+        font-size: 0.85rem; line-height: 1.4;
+    }
+    .ai-message.assistant {
+        background: white; border-bottom-left-radius: 4px;
+        align-self: flex-start; color: #1e293b;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .ai-message.user {
+        background: #4e54c8; color: white;
+        border-bottom-right-radius: 4px; align-self: flex-end;
+    }
+    .ai-chat-suggestions {
+        display: flex; gap: 8px; flex-wrap: wrap;
+        padding: 10px 20px; background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+    }
+    .ai-suggestion-chip {
+        font-size: 0.75rem; padding: 6px 12px; border-radius: 20px;
+        background: white; border: 1px solid #e2e8f0;
+        cursor: pointer; transition: background 0.2s;
+    }
+    .ai-suggestion-chip:hover { background: #f1f5f9; }
+    .ai-chat-footer {
+        padding: 15px 20px; border-top: 1px solid #e2e8f0;
+        display: flex; gap: 10px; background: white;
+    }
+    .ai-chat-input {
+        border-radius: 20px; border: 1px solid #e2e8f0;
+        padding: 8px 16px; font-size: 0.85rem; width: 100%;
+    }
+    .ai-chat-send {
+        background: #4e54c8; color: white; border: none;
+        width: 38px; height: 38px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+    }
 </style>
 {% endblock %}
 
@@ -94,6 +162,42 @@
                     <p class="text-muted small text-center py-5">No transactions found.</p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- AI Assistant Floating Widget -->
+    <button class="ai-chat-bubble" onclick="toggleChatWindow()" id="chatBubbleBtn" title="Ask AI Assistant">
+        <i class="fas fa-robot"></i>
+    </button>
+
+    <div class="ai-chat-window" id="chatWindow">
+        <div class="ai-chat-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-robot"></i>
+                <span class="fw-bold small">Project Assistant AI</span>
+            </div>
+            <button class="btn btn-sm btn-link text-white p-0" onclick="toggleChatWindow()" style="font-size: 1.1rem; text-decoration: none;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="ai-chat-body" id="chatBody">
+            <div class="ai-message assistant">
+                Hi! I'm your AI assistant. Ask me anything about employees, projects, tasks, or expenses!
+            </div>
+        </div>
+        <div class="ai-chat-suggestions">
+            <div class="ai-suggestion-chip" onclick="sendPrompt('Show a summary overview')">Overview</div>
+            <div class="ai-suggestion-chip" onclick="sendPrompt('List all employees')">Employees</div>
+            <div class="ai-suggestion-chip" onclick="sendPrompt('Show project manager details')">Projects</div>
+            <div class="ai-suggestion-chip" onclick="sendPrompt('How many tasks are pending?')">Task status</div>
+            <div class="ai-suggestion-chip" onclick="sendPrompt('What are my total expenses?')">Expenses</div>
+        </div>
+        <div class="ai-chat-footer">
+            <input type="text" class="ai-chat-input" id="chatInput" placeholder="Ask a question..." onkeydown="if(event.key === 'Enter') submitChat()">
+            <button class="btn btn-outline-secondary rounded-circle p-0 d-flex align-items-center justify-content-center" id="voiceBtn" onclick="startVoiceRecognition()" style="width: 38px; height: 38px; flex-shrink: 0;" title="Speak">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button class="ai-chat-send" onclick="submitChat()"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 </div>
@@ -208,6 +312,128 @@
                 },
             },
         });
+    }
+
+    // AI Assistant Handlers
+    function toggleChatWindow() {
+        const chatWindow = document.getElementById("chatWindow");
+        if (chatWindow.style.display === "flex") {
+            chatWindow.style.display = "none";
+        } else {
+            chatWindow.style.display = "flex";
+            const chatBody = document.getElementById("chatBody");
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+    }
+
+    function sendPrompt(promptText) {
+        appendMessage(promptText, "user");
+        
+        fetch("/api/ai-assistant/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify({ prompt: promptText })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.response) {
+                appendMessage(data.response, "assistant");
+                speak(stripHtml(data.response));
+            } else if (data.error) {
+                appendMessage("Error: " + data.error, "assistant");
+                speak("Error encountered.");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            appendMessage("Unable to connect to assistant.", "assistant");
+            speak("Unable to connect to assistant.");
+        });
+    }
+
+    function submitChat() {
+        const input = document.getElementById("chatInput");
+        const promptText = input.value.trim();
+        if (!promptText) return;
+        
+        input.value = "";
+        sendPrompt(promptText);
+    }
+
+    function appendMessage(text, sender) {
+        const chatBody = document.getElementById("chatBody");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `ai-message ${sender}`;
+        msgDiv.innerHTML = text;
+        chatBody.appendChild(msgDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function startVoiceRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Speech recognition is not supported in this browser. Please use Chrome/Edge.");
+            return;
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'hi-IN'; // Supports Hindi/Hinglish voice input
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        
+        const voiceBtn = document.getElementById("voiceBtn");
+        voiceBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-danger"></i>';
+        
+        recognition.start();
+        
+        recognition.onresult = function(event) {
+            const speechResult = event.results[0][0].transcript;
+            document.getElementById("chatInput").value = speechResult;
+            submitChat();
+        };
+        
+        recognition.onspeechend = function() {
+            recognition.stop();
+            voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+        };
+        
+        recognition.onerror = function(event) {
+            console.error(event.error);
+            voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+        };
+    }
+
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // stop any current speech
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'hi-IN'; // Sets spoken language context
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function stripHtml(html) {
+        let tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || "";
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 </script>
 {% endblock %}

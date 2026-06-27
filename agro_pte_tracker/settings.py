@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'home',
     'accounts',
     'todo',
-    
+    'tasks',
 ]
 
 MIDDLEWARE = [

@@ -406,3 +406,100 @@ def add_expense(request):
         form = ExpenseForm()
 
     return render(request, 'expenses/add_expense.html', {'form': form})
+
+
+from employees.models import Employee
+from projects.models import Project
+from tasks.models import Task
+from django.db.models import Sum
+
+@csrf_exempt
+@login_required
+def ai_assistant_api(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            prompt = data.get("prompt", "").lower().strip()
+            
+            # Query databases
+            emp_count = Employee.objects.count()
+            proj_count = Project.objects.count()
+            task_count = Task.objects.count()
+            
+            expense_agg = Expense_day_wise.objects.filter(user=request.user).aggregate(Sum('amount'))
+            total_expense = expense_agg['amount__sum'] or 0
+            
+            response_text = ""
+            
+            # Simple NLP Router
+            if "today" in prompt or "aaj" in prompt or "daily" in prompt:
+                from todo.models import Todo
+                today_date = timezone.now().date()
+                
+                # Fetch today's tasks
+                today_tasks = Task.objects.filter(deadline=today_date)
+                # Fetch today's todo items
+                today_todos = Todo.objects.filter(due_date__date=today_date)
+                
+                task_items = "".join([f"<li>[Task] <strong>{t.title}</strong> ({t.status})</li>" for t in today_tasks])
+                todo_items = "".join([f"<li>[To-Do] <strong>{td.title}</strong> ({td.status})</li>" for td in today_todos])
+                
+                combined_list = task_items + todo_items
+                if combined_list:
+                    response_text = f"Here are your tasks for today:<br><ul class='mb-0'>{combined_list}</ul>"
+                else:
+                    response_text = "You have no tasks scheduled for today."
+                    
+            elif "employee" in prompt or "staff" in prompt or "people" in prompt:
+                employees = Employee.objects.all()
+                emp_list = "<ul class='mb-0'>" + "".join([f"<li><strong>{e.name}</strong> - {e.designation} ({e.phone})</li>" for e in employees]) + "</ul>"
+                response_text = f"We currently have <strong>{emp_count}</strong> registered employee(s):<br>{emp_list if emp_count > 0 else 'No employees registered yet.'}"
+                
+            elif "project" in prompt or "manager" in prompt:
+                projects = Project.objects.all()
+                proj_list = "<ul class='mb-0'>" + "".join([f"<li><strong>{p.name}</strong> (Managed by {p.manager.name}, Ends: {p.end_date})</li>" for p in projects]) + "</ul>"
+                response_text = f"We have <strong>{proj_count}</strong> active project(s):<br>{proj_list if proj_count > 0 else 'No active projects found.'}"
+                
+            elif "task" in prompt or "todo" in prompt or "pending" in prompt or "kanban" in prompt:
+                tasks = Task.objects.all()
+                pending = tasks.filter(status='Pending').count()
+                progress = tasks.filter(status='In Progress').count()
+                completed = tasks.filter(status='Completed').count()
+                
+                response_text = (
+                    f"Task statistics:<br>"
+                    f"- <strong>{pending}</strong> Pending tasks<br>"
+                    f"- <strong>{progress}</strong> In Progress tasks<br>"
+                    f"- <strong>{completed}</strong> Completed tasks<br>"
+                    f"Total: <strong>{task_count}</strong> task(s)."
+                )
+                
+            elif "expense" in prompt or "spend" in prompt or "cost" in prompt or "finance" in prompt or "money" in prompt or "rupee" in prompt:
+                expenses = Expense_day_wise.objects.filter(user=request.user)
+                cat_spend = {}
+                for e in expenses:
+                    cat_spend[e.category] = cat_spend.get(e.category, 0) + float(e.amount)
+                
+                cat_list = "".join([f"<li>{cat}: <strong>₹{amt:,.2f}</strong></li>" for cat, amt in cat_spend.items()])
+                response_text = (
+                    f"Your total logged financial expense is <strong>₹{total_expense:,.2f}</strong>.<br>"
+                    f"Breakdown by category:<br><ul class='mb-0'>{cat_list}</ul>"
+                )
+            
+            else:
+                # General summary default response
+                response_text = (
+                    f"Hi! I am your AI project assistant. Here is a high-level summary of your project status:<br><br>"
+                    f"💼 <strong>Employees:</strong> {emp_count} registered staff members.<br>"
+                    f"🏗️ <strong>Projects:</strong> {proj_count} active projects.<br>"
+                    f"📋 <strong>Tasks:</strong> {task_count} total project tasks.<br>"
+                    f"💰 <strong>Finance:</strong> ₹{total_expense:,.2f} total logged expenses.<br><br>"
+                    f"Feel free to ask me specifics, like: <em>'how much did I spend?'</em>, <em>'show me our employees'</em>, or <em>'what is the status of our tasks?'</em>!"
+                )
+                
+            return JsonResponse({"response": response_text}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+            
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
