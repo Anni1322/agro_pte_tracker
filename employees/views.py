@@ -46,3 +46,15 @@ def employee_delete(request, pk):
         employee.delete()
         return redirect('employee_list')
     return render(request, 'employees/employee_confirm_delete.html', {'employee': employee})
+
+
+# API VIEWSET
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from .serializers import EmployeeSerializer
+
+class EmployeeViewSet(viewsets.ModelViewSet):
+    queryset = Employee.objects.all()
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsAuthenticated]
+

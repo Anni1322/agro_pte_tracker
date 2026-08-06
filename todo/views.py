@@ -817,9 +817,40 @@ def todo_dashboard(request):
 # #         )
         
 # #         # If it's a JSON request (Postman), return JSON
-# #         if request.content_type == 'application/json':
-# #             return JsonResponse({"status": "Task created successfully!"}, status=201)
-            
 # #         return redirect('todo_list')
     
 # #     return render(request, 'todo/todo_form.html')
+
+
+# API VIEWSET
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from .serializers import TodoSerializer
+
+class TodoViewSet(viewsets.ModelViewSet):
+    serializer_class = TodoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff or user.username == 'admin':
+            queryset = Todo.objects.all()
+        else:
+            from django.db.models import Q
+            queryset = Todo.objects.filter(Q(created_by=user) | Q(assigned_to=user))
+
+        priority = self.request.query_params.get('priority')
+        status = self.request.query_params.get('status')
+        category = self.request.query_params.get('category')
+
+        if priority:
+            queryset = queryset.filter(priority=priority)
+        if status:
+            queryset = queryset.filter(status=status)
+        if category:
+            queryset = queryset.filter(category__icontains=category)
+
+        return queryset.order_by('-id')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)

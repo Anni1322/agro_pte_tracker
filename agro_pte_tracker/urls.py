@@ -18,9 +18,37 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from rest_framework.routers import DefaultRouter
+from employees.views import EmployeeViewSet
+from projects.views import ProjectViewSet
+from tasks.views import TaskViewSet
+from todo.views import TodoViewSet
+from expenses.views import ExpenseViewSet, ExpenseDayWiseViewSet, ai_assistant_api
+
+from accounts import views as accounts_views
+
+router = DefaultRouter()
+router.register(r'employees', EmployeeViewSet, basename='employee')
+router.register(r'projects', ProjectViewSet, basename='project')
+router.register(r'tasks', TaskViewSet, basename='task')
+router.register(r'todos', TodoViewSet, basename='todo')
+router.register(r'expenses', ExpenseViewSet, basename='expense')
+router.register(r'day-wise-expenses', ExpenseDayWiseViewSet, basename='day-wise-expense')
+
 urlpatterns = [
     
     path('admin/', admin.site.urls),
+    
+    # AI Assistant API Endpoint
+    path('api/ai-assistant/', ai_assistant_api, name='api_ai_assistant'),
+    
+    path('api/', include(router.urls)),
+    
+    # REST API Auth paths
+    path('api/auth/login/', accounts_views.login_api, name='api_login'),
+    path('api/auth/logout/', accounts_views.logout_api, name='api_logout'),
+    path('api/auth/session/', accounts_views.session_api, name='api_session'),
+    path('api/auth/signup/', accounts_views.signup_api, name='api_signup'),
     
     # path('', include('home.urls')),
     
@@ -35,3 +63,4 @@ urlpatterns = [
     # path('study/', include('study.urls')),
 
 ]
+
